@@ -192,6 +192,6 @@ int main(int argc,char** argv) {
 	}
 	alpha_yylex(head);
 	printf("Lexical Analysis:\n");
-	print_lex();
+	print_list();
 	return 0;
 }
