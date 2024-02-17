@@ -25,11 +25,15 @@ void insert_token(int numline,int numToken,char* content,char* description,char*
    assert(Token* newToken = malloc(sizeof(Token))!=NULL);
    newToken->numline = numline;
    newToken->numToken= numToken;
+
    assert(newToken -> content = malloc(strlen(content))!=NULL);
+   assert(newToken -> description = malloc(strlen(description))!=NULL);
+   assert(newToken -> type = malloc(strlen(type))!=NULL);
+
    assert(strcpy(newToken->content,content));
    assert(strcpy(newToken->type,type));
-   assert(newToken -> description = malloc(strlen(description))!=NULL);
-   assert(newToken -> content = malloc(strlen(type))!=NULL);
+   assert(strcpy(newToken->description,description));
+ 
 
 
 /*insert to token list*/
