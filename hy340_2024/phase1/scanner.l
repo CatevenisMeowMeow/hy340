@@ -33,7 +33,6 @@ void insert_token(int numline,int numToken,char* content,char* description,char*
    assert(strcpy(newToken->content,content));
    assert(strcpy(newToken->type,type));
    assert(strcpy(newToken->description,description));
- 
 
 
 /*insert to token list*/
@@ -51,7 +50,9 @@ void insert_token(int numline,int numToken,char* content,char* description,char*
     }
 }
 /*TODO print list!!!*/
+void print_tokens(){
 
+}
 
 
 
@@ -116,6 +117,8 @@ SPACE                   [\r\n\t\v]
 COMMENT_LINE                "//".*
 COMMENT_NESTED           "/*"
 
+x COMM
+
 %%
 
 {IF}                    {insert_token(yylineno, ++token_counter, "if", "IF","KEYWORD");}
@@ -166,7 +169,7 @@ COMMENT_NESTED           "/*"
 {DOUBLE_DOT}			{insert_token(yylineno, ++token_counter, "..", "DOUBLE_DOT","PUNCTUATION");}
 {DOT}					{insert_token(yylineno, ++token_counter, ".", "DOT", "PUNCTUATION");}
 
-{STRING}				{insert_token(yylineno, ++token_counter, "yytext", "STRING");}
+{STRING}				{insert_token(yylineno, ++token_counter, yytext,"","STRING");}
 {ERROR_STRING}			{
 							fprintf(stderr, "String beggining at line %d does not close\n", yylineno);
 							exit(0);
@@ -177,10 +180,10 @@ COMMENT_NESTED           "/*"
 {MULTI_COMMENT}			{}
 
 .						{
-							fprintf(stderr, "Undefined input %s in line %d\n", "yytext", yylineno);
+							printf("Undefined input %s in line %d\n", yytext, yylineno);
 							exit(0);
 						}
-
+<<EOF>>{exit(0);}
 
 %%
 
@@ -188,7 +191,7 @@ COMMENT_NESTED           "/*"
 int main(int argc,char** argv) {
 	if(argc>1){
 		if(!(yyin=fopen(argv[1],"r"))){
-			fprintf(stderr,"cannot read file : %s",argv[1]);
+			printf("cannot read file : %s",argv[1]);
 			return 1;
 		}
 	} else {
@@ -196,6 +199,6 @@ int main(int argc,char** argv) {
 	}
 	alpha_yylex(head);
 	printf("Lexical Analysis:\n");
-	print_list();
+	print_tokens();
 	return 0;
 }
