@@ -51,7 +51,7 @@ void insert_token(int numline,int numToken,char* content,char* description,char*
         newToken->next = NULL;
     }
 }
-/*TODO print list!!!*/
+
 void print_tokens(){
 	Token *tmp = head;
 	while(tmp!=NULL){
