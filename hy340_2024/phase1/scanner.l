@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#define YY_DECL int alpha_yylex(void* val)
 
 typedef struct alpha_token_t{
 	int numline;
@@ -22,13 +23,14 @@ int token_counter = 0;
 
 void insert_token(int numline,int numToken,char* content,char* description,char* type){
 /*make the new token */
-   assert(Token* newToken = malloc(sizeof(Token))!=NULL);
+	Token *newToken;
+   assert((newToken = (Token*)malloc(sizeof(Token)))!=NULL);
    newToken->numline = numline;
    newToken->numToken= numToken;
 
-   assert(newToken -> content = malloc(strlen(content))!=NULL);
-   assert(newToken -> description = malloc(strlen(description))!=NULL);
-   assert(newToken -> type = malloc(strlen(type))!=NULL);
+   assert((newToken -> content = (char*)malloc(strlen(content)))!=NULL);
+   assert((newToken -> description = (char*)malloc(strlen(description)))!=NULL);
+   assert((newToken -> type = (char*)malloc(strlen(type)))!=NULL);
 
    assert(strcpy(newToken->content,content));
    assert(strcpy(newToken->type,type));
@@ -51,7 +53,11 @@ void insert_token(int numline,int numToken,char* content,char* description,char*
 }
 /*TODO print list!!!*/
 void print_tokens(){
-
+	Token *tmp = head;
+	while(tmp!=NULL){
+		printf("%d: #%d  \"%s\" %s  %s\n",tmp->numline,tmp->numToken,tmp->content,tmp->type,tmp->description);
+		tmp = tmp->next;
+	}
 }
 
 
@@ -60,6 +66,7 @@ void print_tokens(){
 
 %option noyywrap
 %option yylineno
+%option prefix = "PREFIX"
 
 IF                      "if"
 ELSE                    "else"
@@ -108,16 +115,16 @@ COLON                   ":"
 DOUBLE_DOT              ".."
 DOT                     "."
 
-STRING                  \"[^"]*\"
+STRING                  \"([^"\\]|\\.)*\"
 ERROR_STRING            \"[^\n"]*
 
 ID                      [a-zA-Z][a-zA-Z_0-9]*
-SPACE                   [\r\n\t\v]
+SPACE                   [\r\n\t\v ]*
 
 COMMENT_LINE                "//".*
 COMMENT_NESTED           "/*"
 
-x COMM
+%x COMM
 
 %%
 
@@ -126,7 +133,7 @@ x COMM
 {WHILE}                 {insert_token(yylineno, ++token_counter, "while","WHILE","KEYWORD");}
 {FOR}                   {insert_token(yylineno, ++token_counter, "for","FOR","KEYWORD");}
 {FUNCTION}              {insert_token(yylineno, ++token_counter, "function","FUNCTION" ,"KEYWORD");}
-{RETURN}                {insert_token(yylineno, ++token_counter, "return","RETURN", "KEYWORD);}
+{RETURN}                {insert_token(yylineno, ++token_counter, "return","RETURN", "KEYWORD");}
 {BREAK}                 {insert_token(yylineno, ++token_counter, "break", "BREAK","KEYWORD");}
 {CONTINUE}              {insert_token(yylineno, ++token_counter, "continue","CONTINUE", "KEYWORD");}
 {AND}                   {insert_token(yylineno, ++token_counter, "and","AND" ,"KEYWORD");}
@@ -176,14 +183,14 @@ x COMM
 						}
 {ID}					{insert_token(yylineno, ++token_counter, yytext,"","ID");}
 {SPACE}					{}
-{COMMENT}				{insert_token(yylineno, ++token_counter, "", "COMMENT LINE_COMMENT");}
-{MULTI_COMMENT}			{}
+{COMMENT_LINE}				{insert_token(yylineno, ++token_counter,"//","", "COMMENT LINE_COMMENT");}
+{COMMENT_NESTED}			{}
 
 .						{
 							printf("Undefined input %s in line %d\n", yytext, yylineno);
 							exit(0);
 						}
-<<EOF>>{exit(0);}
+<<EOF>> return 0;
 
 %%
 
