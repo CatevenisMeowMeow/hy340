@@ -1,6 +1,6 @@
-all: scanner.c
-	flex --outfile=scanner.c scanner.l
-	gcc  scanner.c -o scanner
+all: al.c
+	flex --outfile=al.c al.l
+	gcc  al.c -o al
 
 clean:
-	rm scanner scanner.c
+	rm al al.c
