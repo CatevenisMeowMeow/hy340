@@ -2,7 +2,7 @@
 %{
         #include<stdio.h>
         #include<stdlib.h>
-        #include "symTable.h"
+        #include "sym_table.h"
         #define YY_DECL int alpha_yylex(void* ylval)
        
         int yyerror(char* message);
@@ -16,18 +16,17 @@
 
 %}
 
+%start program
+
 %union{
         int int_val;
         double double_val;
-        Token* token_val;
-        struct lvalue_val{const Token* token_val; bool is_declared_local;} variable_val;
-        bool bool_val;
+        char *str_val;
+        symrec *tptr;
 
 }
 
-%type <variable_val> lvalue
-
-
+//%type <variable_val> lvalue
 
 %token IF 
 %token ELSE
@@ -58,10 +57,10 @@
 %token LESSER
 %token GREATER_EQUAL
 %token LESSER_EQUAL
-%token LEFT_BRACKET
-%token RIGHT_BRACKET
-%token LEFT_SUBSCRIPT // '['
-%token RIGHT_SUBSCRIPT // ']' 
+%token LEFT_CURLY // '{'
+%token RIGHT_CURLY // '}'
+%token LEFT_SQUARE// '['
+%token RIGHT_SQUARE // ']' 
 %token LEFT_PARENTHESIS
 %token RIGHT_PARENTHESIS
 %token SEMICOLON
@@ -90,7 +89,7 @@
 %left MULTIPLICATION DIVISION MODULO
 %left NOT INCREMENT DECREMENT
 %left STRUCTURE_REFERENCE DOUBLE_FULL_STOP
-%left LEFT_SUBSCRIPT RIGHT_SUBSCRIPT
+%left LEFT_SQUARE RIGHT_SQUARE
 %right LEFT_PARENTHESIS RIGHT_PARENTHESIS
 %right UMINUS                           // -lvalue error.
 %right EXPRESSION_READ_NEXT_CHARACTER   // opeartions.
@@ -102,7 +101,7 @@
 %%
 
 
-programm:   stmts   {}
+program:   stmts   {}
             ;
 
 
@@ -125,13 +124,13 @@ stmt:   expr SEMICOLON
         | block
         | funcdef
         | ignore
-        | error {cerr<<"Error: invalid stmt";}
+       // | error {cerr<<"Error: invalid stmt";}
         ;
 
 expr:   assignexpr
         | expr op expr %prec EXPRESSION_READ_NEXT_CHARACTER
         | term
-        | error SEMICOLON {cerr<<"Error: expression expected!";}
+       // | error SEMICOLON {cerr<<"Error: expression expected!";}
         ;
 
 op: ADDITION 
@@ -290,7 +289,9 @@ whilestmt:  WHILE LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt
 forstmt:    FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARENTHESIS stmt
             | FOR parenthesiserror 
             | forstmterror 
-            ;
+            ;Token* token_val;
+        struct lvalue_val{const Token* token_val; bool is_declared_local;} variable_val;
+        bool bool_val;
 
 forstmterror:   FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS stmt {cerr<<"Error: missing the first SEMICOLON";}
                 |FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS {cerr<<"Error: missing the first SEMICOLON";}
@@ -332,7 +333,7 @@ int yylex(){
 }
 */
 
-int yywrap(){return 1;}
+//int yywrap(){return 1;}
 
 int main( int argc, char** argv) {
 

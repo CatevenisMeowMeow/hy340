@@ -4,4 +4,4 @@ all: al.c
 	gcc  -o calc al.c parser.c symTable.h
 
 clean:
-	rm al al.c
+	rm calc
