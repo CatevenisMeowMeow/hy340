@@ -28,6 +28,7 @@
 
 %type <node> lvalue
 
+
 %token IF 
 %token ELSE
 %token WHILE
@@ -69,17 +70,17 @@
 %token SCOPE_RESOLUTION         // ::
 %token STRUCTURE_REFERENCE      // .
 %token DOUBLE_FULL_STOP         // ..
-%token ID
-%token INTCONST
-%token REALCONST
-%token STR
+%token <str_val> ID
+%token <int_val> INTCONST
+%token <double_val> REALCONST
+%token <str_val> STRING
 %token NESTED_COMMENT
 %token BLOCK_COMMENT
 %token LINE_COMMENT
 
 //Priority rules
 
-%left REALCONST INTCONST STR NIL TRUE FALSE
+%left REALCONST INTCONST STRING NIL TRUE FALSE
 %left ASSIGNMENT
 %left OR
 %left AND
@@ -151,10 +152,10 @@ op: ADDITION
 term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS
         | SUBTRACTION expr %prec UMINUS  
         | NOT expr
-        | INCREMENT lvalue {incrementing_lvalue_action($2.is_declared_local, $2.token_val);}
-        | DECREMENT lvalue {decrementing_lvalue_action($2.is_declared_local, $2.token_val);}
-        | lvalue INCREMENT {incrementing_lvalue_action($1.is_declared_local, $1.token_val);}
-        | lvalue DECREMENT {decrementing_lvalue_action($1.is_declared_local, $1.token_val);}
+        | INCREMENT lvalue //{incrementing_lvalue_action($2.is_declared_local, $2.token_val);}
+        | DECREMENT lvalue //{decrementing_lvalue_action($2.is_declared_local, $2.token_val);}
+        | lvalue INCREMENT //{incrementing_lvalue_action($1.is_declared_local, $1.token_val);}
+        | lvalue DECREMENT //{decrementing_lvalue_action($1.is_declared_local, $1.token_val);}
         | primary
         ;
 
@@ -289,9 +290,7 @@ whilestmt:  WHILE LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt
 forstmt:    FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARENTHESIS stmt
             | FOR parenthesiserror 
             | forstmterror 
-            ;Token* token_val;
-        struct lvalue_val{const Token* token_val; bool is_declared_local;} variable_val;
-        bool bool_val;
+            ;
 
 forstmterror:   FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS stmt {cerr<<"Error: missing the first SEMICOLON";}
                 |FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS {cerr<<"Error: missing the first SEMICOLON";}
@@ -323,7 +322,7 @@ ignore: BLOCK_COMMENT | LINE_COMMENT | NESTED_COMMENT ;
 
 %%
 
-void yyerror(char* message){
+int yyerror(char* message){
         fprintf(stderr,"%s at line &d, before token: %s\n",message,yylineno,yytext);
 }
 
