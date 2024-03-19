@@ -22,11 +22,11 @@
         int int_val;
         double double_val;
         char *str_val;
-        symrec *tptr;
+        symrec *node;
 
 }
 
-//%type <variable_val> lvalue
+%type <node> lvalue
 
 %token IF 
 %token ELSE
@@ -323,7 +323,7 @@ ignore: BLOCK_COMMENT | LINE_COMMENT | NESTED_COMMENT ;
 
 %%
 
-int yyerror(char* message){
+void yyerror(char* message){
         fprintf(stderr,"%s at line &d, before token: %s\n",message,yylineno,yytext);
 }
 
