@@ -5,6 +5,7 @@
 
 typedef enum Type{GLOBAL, LOCAL, FORMAL, FUNCTION, LIBFUNCTION} Type;
 
+//Will be used to make print easier
 char *type_to_string[] = {
     "GLOBAL",
     "LOCAL",
