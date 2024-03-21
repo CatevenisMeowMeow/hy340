@@ -24,51 +24,58 @@ void insert(char* name, Type type, int line, int scope){
     }
     symrec *prev = NULL;
     symrec *curr = sym_table_head;
-    //search through scopes to go faster
+    //search through scopes
     while(curr != NULL && curr->scope < scope){
         prev = curr;
         curr = curr->next_scope;
     }
-    
+
     //First new scope
     if(curr == NULL){
         tmp = prev;
         if(tmp == NULL){
             tmp = sym_table_head;
+            tmp->next_scope = new_symbol;
         }
-        while(tmp->next != NULL)
+        while(tmp->next != NULL){
+            tmp->next_scope = new_symbol;
             tmp = tmp->next;
+        }
         tmp->next_scope = new_symbol;
         tmp->next = new_symbol;
         return;
     }
     //found scope
     if(curr->scope == scope){
-        tmp = curr;
-        while(tmp->next != NULL && tmp->scope == scope){
-            tmp = tmp->next;
-        }
-        if(tmp->next == NULL){
-            tmp->next_scope = new_symbol;
-            tmp->next = new_symbol;
+        new_symbol->next = curr;
+        new_symbol->next_scope = curr->next_scope;
+        if(prev == NULL){
+            sym_table_head = new_symbol;
         }
         else{
-            new_symbol->next = tmp->next;
-            new_symbol->next_scope = tmp->next_scope;
-            tmp->next = new_symbol;
+            tmp = prev;
+            while(tmp->scope < scope){
+                prev = tmp;
+                tmp->next_scope = new_symbol;
+                tmp = tmp->next;
+            }
+            prev->next_scope = new_symbol;
+            prev->next = new_symbol;
         }
         return;
     }
     //new scope somewhere between
-    if(curr->scope > scope && prev->scope < scope){
+    if(curr->scope > scope && prev->scope < scope){ 
         tmp = prev;
         while(tmp->scope < scope){
+                prev = tmp;
+                tmp->next_scope = new_symbol;
                 tmp = tmp->next;
         }
-        new_symbol->next = tmp->next;
-        new_symbol->next_scope = tmp->next_scope;
-        tmp->next = new_symbol;
-        tmp->next_scope = new_symbol;
+        new_symbol->next = tmp;
+        new_symbol->next_scope = tmp;
+        prev->next = new_symbol;
+        prev->next_scope = new_symbol;
         return;
     }
 
@@ -136,13 +143,15 @@ void activate(int scope){
 //proswrinos tester code
 int main(){
 
-    //insert_library_functions();
+    insert_library_functions();
+    insert("a", GLOBAL, 0, 0);
     insert("a", GLOBAL, 0, 0);
     insert("b", GLOBAL, 1, 2);
     insert("c", FUNCTION, 2, 0);
     insert("d", FORMAL, 3, 1);
     insert("e", LOCAL, 4, 1);
     insert("f", GLOBAL, 5, 7);
+    insert("f2", GLOBAL, 5, 7);
     insert("k", GLOBAL, 6, 10);
     insert("g", GLOBAL, 7, 0);
     insert("h", FUNCTION, 8, 0);
