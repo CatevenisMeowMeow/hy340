@@ -28,8 +28,17 @@ symrec *sym_table_head = NULL;
 
 void insert(char* name, Type type, int line, int scope);
 
+void insert_library_functions();
+
 symrec* lookup(char* name);
 
 symrec* lookup_scope(char* name, int scope);
 
 int is_hidden(symrec* rec);
+
+void hide(int scope);
+
+void activate(int scope);
+
+
+

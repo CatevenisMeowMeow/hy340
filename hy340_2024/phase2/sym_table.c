@@ -56,6 +56,22 @@ void insert(char* name, Type type, int line, int scope){
 
 }
 
+
+void insert_library_functions(){
+    insert("print",LIBFUNCTION,0,0);
+    insert("input",LIBFUNCTION,0,0);
+    insert("objectmemberkeys",LIBFUNCTION,0,0);
+    insert("objecttotalmembers",LIBFUNCTION,0,0);
+    insert("objectcopy",LIBFUNCTION,0,0);
+    insert("totalarguments",LIBFUNCTION,0,0);
+    insert("argument",LIBFUNCTION,0,0);
+    insert("typeof",LIBFUNCTION,0,0);
+    insert("strtonum",LIBFUNCTION,0,0);
+    insert("sqrt",LIBFUNCTION,0,0);
+    insert("cos",LIBFUNCTION,0,0);
+    insert("sin",LIBFUNCTION,0,0);
+}
+
 symrec* lookup(char* name){
 
 
@@ -70,12 +86,31 @@ int is_hidden(symrec* rec){
     return rec->active; //1 if active. 0 if not
 }
 
+void hide(int scope){
+    symrec* tmp = sym_table_head;
+    while(tmp != NULL){
+        if(tmp->scope == scope)
+            tmp->active = 0;
+        tmp = tmp->next;
+    }
+}
+//oposite of hide
+void activate(int scope){
+    symrec* tmp = sym_table_head;
+    while(tmp != NULL){
+        if(tmp->scope == scope)
+            tmp->active = 1;
+        tmp = tmp->next;
+    }
+}
+
+
 
 
 //proswrinos tester code
 int main(){
 
-   
+    insert_library_functions();
     insert("a", GLOBAL, 0, 0);
     insert("b", GLOBAL, 1, 0);
     insert("c", FUNCTION, 2, 0);

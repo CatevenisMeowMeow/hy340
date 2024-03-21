@@ -68,8 +68,8 @@
 %token COMMA
 %token MEMBER_INITIALISER_LIST  // :
 %token SCOPE_RESOLUTION         // ::
-%token STRUCTURE_REFERENCE      // .
-%token DOUBLE_FULL_STOP         // ..
+%token DOT      // .
+%token DOUBLE_DOT         // ..
 %token <str_val> ID
 %token <int_val> INTCONST
 %token <double_val> REALCONST
@@ -89,7 +89,7 @@
 %left ADDITION SUBTRACTION
 %left MULTIPLICATION DIVISION MODULO
 %left NOT INCREMENT DECREMENT
-%left STRUCTURE_REFERENCE DOUBLE_FULL_STOP
+%left DOT DOUBLE_DOT
 %left LEFT_SQUARE RIGHT_SQUARE
 %right LEFT_PARENTHESIS RIGHT_PARENTHESIS
 %right UMINUS                           // -lvalue error.
@@ -175,9 +175,9 @@ lvalue: ID                            {$$.token_val = &tokenList.back(); $$.is_d
         | member                            {$$.token_val = nullptr; $$.is_declared_local = false;}
         ;
 
-member: lvalue STRUCTURE_REFERENCE ID                   {}
+member: lvalue DOT ID                   {}
         | lvalue LEFT_SUBSCRIPT expr RIGHT_SUBSCRIPT    {}
-        | call STRUCTURE_REFERENCE ID                   {}
+        | call DOT ID                   {}
         | call LEFT_SUBSCRIPT expr RIGHT_SUBSCRIPT      {}
         ;
 
@@ -193,7 +193,7 @@ callsufix:  normcall
 normcall:   LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
             ;
 
-methodcall: DOUBLE_FULL_STOP ID LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
+methodcall: DOUBLE_DOT ID LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
             ;
 
 elist:  LEFT_SUBSCRIPT expressionlist RIGHT_SUBSCRIPT
@@ -343,6 +343,7 @@ int main( int argc, char** argv) {
         }
     }
     else yyin = stdin;
+    insert_library_functions();
     yyparse();
     return 0;
 
