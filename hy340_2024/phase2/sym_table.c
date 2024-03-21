@@ -1,5 +1,6 @@
 #include"sym_table.h"
 
+
 void insert(char* name, Type type, int line, int scope){
     symrec* tmp;
     //create node
@@ -31,8 +32,14 @@ void insert(char* name, Type type, int line, int scope){
     
     //First new scope
     if(curr == NULL){
-        prev->next_scope = new_symbol;
-        prev->next = new_symbol;
+        tmp = prev;
+        if(tmp == NULL){
+            tmp = sym_table_head;
+        }
+        while(tmp->next != NULL)
+            tmp = tmp->next;
+        tmp->next_scope = new_symbol;
+        tmp->next = new_symbol;
         return;
     }
     //found scope
@@ -52,7 +59,22 @@ void insert(char* name, Type type, int line, int scope){
         }
         return;
     }
+    //new scope somewhere between
+    if(curr->scope > scope && prev->scope < scope){
+        tmp = prev;
+        while(tmp->scope < scope){
+                tmp = tmp->next;
+        }
+        new_symbol->next = tmp->next;
+        new_symbol->next_scope = tmp->next_scope;
+        tmp->next = new_symbol;
+        tmp->next_scope = new_symbol;
+        return;
+    }
+
+    
     printf("Insert function must never come here!!!!!!\n");
+    printf("scope  %d  \n",scope);
 
 }
 
@@ -72,10 +94,14 @@ void insert_library_functions(){
     insert("sin",LIBFUNCTION,0,0);
 }
 
+
 symrec* lookup(char* name){
-
-
-
+    symrec *tmp = sym_table_head;
+    while(tmp != NULL){
+        if(strcmp(tmp->name,name) == 0)
+            break;
+    }
+    return tmp;
 }
 
 symrec* lookup_scope(char* name, int scope);
@@ -110,18 +136,19 @@ void activate(int scope){
 //proswrinos tester code
 int main(){
 
-    insert_library_functions();
+    //insert_library_functions();
     insert("a", GLOBAL, 0, 0);
-    insert("b", GLOBAL, 1, 0);
+    insert("b", GLOBAL, 1, 2);
     insert("c", FUNCTION, 2, 0);
-    insert("d", FORMAL, 2, 1);
-    insert("e", LOCAL, 3, 1);
-    insert("f", GLOBAL, 0, 0);
-    insert("g", GLOBAL, 1, 0);
-    insert("h", FUNCTION, 2, 0);
-    insert("i", FORMAL, 2, 0);
-    insert("j", LOCAL, 3, 1);
-    insert("k", GLOBAL, 7, 10);
+    insert("d", FORMAL, 3, 1);
+    insert("e", LOCAL, 4, 1);
+    insert("f", GLOBAL, 5, 7);
+    insert("k", GLOBAL, 6, 10);
+    insert("g", GLOBAL, 7, 0);
+    insert("h", FUNCTION, 8, 0);
+    insert("i", FORMAL, 9, 0);
+    insert("j", LOCAL, 10, 1);
+  
   
 
 
