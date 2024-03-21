@@ -26,6 +26,8 @@ typedef struct sym_table{
 
 symrec *sym_table_head = NULL;
 
+void print_symbol_table();
+
 void insert(char* name, Type type, int line, int scope);
 
 void insert_library_functions();

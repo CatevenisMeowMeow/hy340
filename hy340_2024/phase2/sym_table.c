@@ -138,6 +138,24 @@ void activate(int scope){
 }
 
 
+void print_symbol_table(){
+    symrec *tmp = sym_table_head;
+    int scope_change = 1;
+    while(tmp != NULL){
+        if(scope_change == 1){
+            printf("\n-------    Scope  #%d    -------\n",tmp->scope);
+            scope_change = 0;
+        }
+        printf("%s  [%s]  (line %d)  (scope %d)\n",tmp->name,type_to_string[tmp->type],tmp->line,tmp->scope);
+        if(tmp->next != NULL && tmp->next->scope != tmp->scope)
+            scope_change = 1;
+        tmp = tmp->next; 
+    }
+
+
+}
+
+
 
 
 //proswrinos tester code
@@ -159,14 +177,21 @@ int main(){
     insert("j", LOCAL, 10, 1);
   
   
+    print_symbol_table();
 
-
-    symrec* tmp = sym_table_head;
+    /*symrec* tmp = sym_table_head;
     while(tmp!=NULL){
         printf("%s is %s at line %d and scope %d\n",tmp->name,type_to_string[tmp->type],tmp->line,tmp->scope);
         tmp = tmp->next;
     }
-
+    tmp = sym_table_head;
+    printf("\n\n");
+    printf("Now we print the first one for each scope\n");
+    while(tmp!=NULL){
+        printf("%s is %s at line %d and scope %d\n",tmp->name,type_to_string[tmp->type],tmp->line,tmp->scope);
+        tmp = tmp->next_scope;
+    }
+    */
 
     return 0;
 }
