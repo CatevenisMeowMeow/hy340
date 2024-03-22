@@ -12,7 +12,7 @@ void insert(char* name, Type type, int line, int scope){
     new_symbol->type = type;
     new_symbol->next = NULL;
     new_symbol->next_scope = NULL;
-    new_symbol -> name = (char*)malloc(strlen(name));
+    new_symbol -> name = (char*)malloc(strlen(name)+1);
     assert(new_symbol->name != NULL);
     strcpy(new_symbol->name, name);
 
@@ -107,11 +107,30 @@ symrec* lookup(char* name){
     while(tmp != NULL){
         if(strcmp(tmp->name,name) == 0)
             break;
+        tmp = tmp->next;
     }
     return tmp;
 }
 
-symrec* lookup_scope(char* name, int scope);
+symrec* lookup_scope(char* name, int scope){
+    symrec* curr = sym_table_head;
+    symrec* prev = NULL;
+    
+    while(curr != NULL && curr->scope != scope){
+        prev = curr;
+        curr = curr->next_scope;
+    }
+    //scope not found
+    if(curr == NULL)
+        return NULL;
+    //searching through scope
+    while(curr != NULL && curr->scope == scope){
+        if(strcmp(curr->name,name) == 0)
+            return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
 
 
 int is_hidden(symrec* rec){
@@ -119,7 +138,7 @@ int is_hidden(symrec* rec){
     return rec->active; //1 if active. 0 if not
 }
 
-void hide(int scope){
+void hide_scope(int scope){
     symrec* tmp = sym_table_head;
     while(tmp != NULL){
         if(tmp->scope == scope)
@@ -128,7 +147,7 @@ void hide(int scope){
     }
 }
 //oposite of hide
-void activate(int scope){
+void activate_scope(int scope){
     symrec* tmp = sym_table_head;
     while(tmp != NULL){
         if(tmp->scope == scope)
@@ -175,9 +194,16 @@ int main(){
     insert("h", FUNCTION, 8, 0);
     insert("i", FORMAL, 9, 0);
     insert("j", LOCAL, 10, 1);
+
+    //symrec* f = lookup("f");
+     symrec* f = lookup("input");
+    if(f != NULL)
+        printf("Found %s at line %d and scope %d\n",f->name,f->line,f->scope);
+    else
+        printf("Not found\n");
   
   
-    print_symbol_table();
+    //print_symbol_table();
 
     /*symrec* tmp = sym_table_head;
     while(tmp!=NULL){
