@@ -38,9 +38,11 @@ symrec* lookup_scope(char* name, int scope);
 
 int is_hidden(symrec* rec);
 
-void hide(int scope);
+void hide_scope(int scope);
 
-void activate(int scope);
+void activate_scope(int scope);
+
+int is_library_function(char* name);
 
 
 

@@ -11,6 +11,9 @@
         extern char* yytext;
         extern FILE* yyin;
 
+        int scope = 0;
+        int anonymous_function_counter = 0;
+        char* buf[32];
         
 
 
@@ -44,20 +47,20 @@
 %token TRUE
 %token FALSE
 %token NIL
-%token ASSIGNMENT
-%token ADDITION
-%token SUBTRACTION
+%token ASSIGN
+%token PLUS                    
+%token MINUS
 %token MULTIPLICATION
 %token DIVISION
 %token MODULO
 %token EQUAL
 %token NOT_EQUAL
-%token INCREMENT
-%token DECREMENT
+%token PLUS_PLUS               
+%token MINUS_MINUS             
 %token GREATER
-%token LESSER
+%token LESS
 %token GREATER_EQUAL
-%token LESSER_EQUAL
+%token LESS_EQUAL
 %token LEFT_CURLY // '{'
 %token RIGHT_CURLY // '}'
 %token LEFT_SQUARE// '['
@@ -66,29 +69,29 @@
 %token RIGHT_PARENTHESIS
 %token SEMICOLON
 %token COMMA
-%token MEMBER_INITIALISER_LIST  // :
-%token SCOPE_RESOLUTION         // ::
+%token COLON  // :
+%token DOUBLE_COLON         // ::
 %token DOT      // .
 %token DOUBLE_DOT         // ..
 %token <str_val> ID
-%token <int_val> INTCONST
-%token <double_val> REALCONST
-%token <str_val> STRING
-%token NESTED_COMMENT
+%token <int_val> CONST_INT
+%token <double_val> CONST_REAL
+%token <str_val> CONST_STRING
+%token COMMENT_NESTED
 %token BLOCK_COMMENT
-%token LINE_COMMENT
+%token COMMENT_LINE
 
 //Priority rules
 
-%left REALCONST INTCONST STRING NIL TRUE FALSE
-%left ASSIGNMENT
+%left CONST_REAL CONST_INT STRING NIL TRUE FALSE
+%left ASSIGN
 %left OR
 %left AND
 %nonassoc EQUAL NOT_EQUAL
-%nonassoc GREATER GREATER_EQUAL LESSER LESSER_EQUAL
-%left ADDITION SUBTRACTION
+%nonassoc GREATER GREATER_EQUAL LESS LESS_EQUAL
+%left PLUS MINUS
 %left MULTIPLICATION DIVISION MODULO
-%left NOT INCREMENT DECREMENT
+%left NOT PLUS_PLUS MINUS_MINUS
 %left DOT DOUBLE_DOT
 %left LEFT_SQUARE RIGHT_SQUARE
 %right LEFT_PARENTHESIS RIGHT_PARENTHESIS
@@ -134,15 +137,15 @@ expr:   assignexpr
        // | error SEMICOLON {cerr<<"Error: expression expected!";}
         ;
 
-op: ADDITION 
-    | SUBTRACTION 
+op: PLUS 
+    | MINUS 
     | MULTIPLICATION
     | DIVISION 
     | MODULO 
     | GREATER 
     | GREATER_EQUAL 
-    | LESSER 
-    | LESSER_EQUAL 
+    | LESS 
+    | LESS_EQUAL 
     | EQUAL 
     | NOT_EQUAL 
     | AND 
@@ -150,16 +153,16 @@ op: ADDITION
     ;
 
 term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS
-        | SUBTRACTION expr %prec UMINUS  
+        | MINUS expr %prec UMINUS  
         | NOT expr
-        | INCREMENT lvalue //{incrementing_lvalue_action($2.is_declared_local, $2.token_val);}
-        | DECREMENT lvalue //{decrementing_lvalue_action($2.is_declared_local, $2.token_val);}
-        | lvalue INCREMENT //{incrementing_lvalue_action($1.is_declared_local, $1.token_val);}
-        | lvalue DECREMENT //{decrementing_lvalue_action($1.is_declared_local, $1.token_val);}
+        | PLUS_PLUS lvalue //{incrementing_lvalue_action($2.is_declared_local, $2.token_val);}
+        | MINUS_MINUS lvalue //{decrementing_lvalue_action($2.is_declared_local, $2.token_val);}
+        | lvalue PLUS_PLUS //{incrementing_lvalue_action($1.is_declared_local, $1.token_val);}
+        | lvalue MINUS_MINUS //{decrementing_lvalue_action($1.is_declared_local, $1.token_val);}
         | primary
         ;
 
-assignexpr: lvalue ASSIGNMENT expr {assignexpr_action($1.is_declared_local, $1.token_val);}
+assignexpr: lvalue ASSIGN expr {assignexpr_action($1.is_declared_local, $1.token_val);}
             ;
 
 primary:    lvalue {lvalue_action($1.is_declared_local, $1.token_val);}
@@ -171,7 +174,7 @@ primary:    lvalue {lvalue_action($1.is_declared_local, $1.token_val);}
 
 lvalue: ID                            {$$.token_val = &tokenList.back(); $$.is_declared_local = false;} 
         | LOCAL ID              {$$.token_val = &tokenList.back(); $$.is_declared_local = true;}
-        | SCOPE_RESOLUTION ID   {$$.token_val = symbol_table.search_global_id(tokenList.back().getLexem()); $$.is_declared_local = false;}
+        | DOUBLE_COLON ID   {$$.token_val = symbol_table.search_global_id(tokenList.back().getLexem()); $$.is_declared_local = false;}
         | member                            {$$.token_val = nullptr; $$.is_declared_local = false;}
         ;
 
@@ -224,12 +227,12 @@ indexedelemlist: indexedelem
                  | indexedelem COMMA indexedelemlist
                  ;
 
-indexedelem:    LEFT_BRACKET expr MEMBER_INITIALISER_LIST expr RIGHT_BRACKET
+indexedelem:    LEFT_BRACKET expr COLON expr RIGHT_BRACKET
                 ;
 
-indexedelemlisterror:  indexedelemlist LEFT_BRACKET expr expr RIGHT_BRACKET{cerr<<"Error: missing MEMBER_INITIALISER_LIST";} 
-                   | indexedelemlist LEFT_BRACKET  MEMBER_INITIALISER_LIST expr RIGHT_BRACKET {cerr<<"Error: left expression missing";}
-                   | indexedelemlist LEFT_BRACKET expr MEMBER_INITIALISER_LIST expr stmt {cerr<<"Error: RIGHT_BRACKET missing";}
+indexedelemlisterror:  indexedelemlist LEFT_BRACKET expr expr RIGHT_BRACKET{cerr<<"Error: missing COLON";} 
+                   | indexedelemlist LEFT_BRACKET  COLON expr RIGHT_BRACKET {cerr<<"Error: left expression missing";}
+                   | indexedelemlist LEFT_BRACKET expr COLON expr stmt {cerr<<"Error: RIGHT_BRACKET missing";}
 ;
 
 
@@ -253,7 +256,11 @@ funcdef:    FUNCTION functioname funcdefopenscope idlist RIGHT_PARENTHESIS block
             ;
 
 functioname: ID {symbol_table.define_function(&tokenList.back());}
-             |  {add_unnamed_function(); symbol_table.define_function(&unnamed_functions.back());} // An meinei xronos, tha ftiaksw nea methodo xwris elegxous.
+             |  {
+                sprintf(buf,"$%d",anonymous_function_counter);
+                anonymous_function_counter++; 
+                insert(buf,FUNCTION,yylineno,scope);
+                }
              ;
 
 funcdefopenscope: LEFT_PARENTHESIS { increment_scope=false; symbol_table.initialise_new_scope(); }
@@ -266,7 +273,7 @@ functionerror:FUNCTION functioname idlist RIGHT_PARENTHESIS block {cerr<<"Error:
               | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS block {cerr<<"Error: false expression in parenthesis";}
 ;
 
-const:  REALCONST | INTCONST | STR | NIL | TRUE | FALSE
+const:  CONST_REAL | CONST_INT | CONST_STRING | NIL | TRUE | FALSE
         ;
 
 idlist: ID                 {symbol_table.search_formal_identifier(&tokenList.back());}
@@ -315,7 +322,7 @@ returnstmts: expr SEMICOLON {}
              ;
 
 
-ignore: BLOCK_COMMENT | LINE_COMMENT | NESTED_COMMENT ;
+ignore: BLOCK_COMMENT | COMMENT_LINE | COMMENT_NESTED ;
 
 //End of grammar rules
 
@@ -324,6 +331,7 @@ ignore: BLOCK_COMMENT | LINE_COMMENT | NESTED_COMMENT ;
 
 int yyerror(char* message){
         fprintf(stderr,"%s at line &d, before token: %s\n",message,yylineno,yytext);
+        return 1;
 }
 
 /*
@@ -345,6 +353,7 @@ int main( int argc, char** argv) {
     else yyin = stdin;
     insert_library_functions();
     yyparse();
+    print_symbol_table();
     return 0;
 
 

@@ -174,6 +174,14 @@ void print_symbol_table(){
 
 }
 
+int is_library_function(char* name){
+    symrec *tmp = sym_table_head;
+    tmp = lookup_scope(name,0);
+    if(tmp != NULL && tmp->type == LIBFUNCTION)
+        return 1;
+    return 0;
+}
+
 
 
 
@@ -197,6 +205,8 @@ int main(){
 
     //symrec* f = lookup("f");
      symrec* f = lookup("input");
+     if(is_library_function("objectmemberkeys"))
+        printf("library function!!!!!!!!!!!\n");
     if(f != NULL)
         printf("Found %s at line %d and scope %d\n",f->name,f->line,f->scope);
     else
