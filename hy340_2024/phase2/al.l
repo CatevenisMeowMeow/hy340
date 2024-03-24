@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#define YY_DECL int alpha_yylex(void* val)
+#include "parser.h"
+
 
 typedef struct alpha_token_t{
 	int numlineStart;
@@ -76,7 +77,7 @@ void print_tokens(){
 
 %option noyywrap
 %option yylineno
-%option prefix = "PREFIX"
+
 
 IF                      "if"
 ELSE                    "else"
@@ -226,19 +227,3 @@ COMMENT_NESTED           "/*"
 <<EOF>> return 0;
 
 %%
-
-
-int main(int argc,char** argv) {
-	if(argc>1){
-		if(!(yyin=fopen(argv[1],"r"))){
-			printf("cannot read file : %s",argv[1]);
-			return 1;
-		}
-	} else {
-		yyin=stdin;
-	}
-	alpha_yylex(head);
-	printf("Lexical Analysis:\n");
-	print_tokens();
-	return 0;
-}

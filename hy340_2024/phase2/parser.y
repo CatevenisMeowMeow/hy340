@@ -13,7 +13,8 @@
 
         int scope = 0;
         int anonymous_function_counter = 0;
-        char* buf[32];
+        char buf[32];
+        symrec* tmp;
         
 
 
@@ -25,7 +26,7 @@
         int int_val;
         double double_val;
         char *str_val;
-        symrec *node;
+        struct sym_table *node;
 
 }
 
@@ -162,26 +163,35 @@ term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS
         | primary
         ;
 
-assignexpr: lvalue ASSIGN expr {assignexpr_action($1.is_declared_local, $1.token_val);}
+assignexpr: lvalue ASSIGN expr //{assignexpr_action($1.is_declared_local, $1.token_val);}
             ;
 
-primary:    lvalue {lvalue_action($1.is_declared_local, $1.token_val);}
+primary:    lvalue //{lvalue_action($1.is_declared_local, $1.token_val);}
             | call
             | objectdef
             | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
             | const
             ;
 
-lvalue: ID                            {$$.token_val = &tokenList.back(); $$.is_declared_local = false;} 
-        | LOCAL ID              {$$.token_val = &tokenList.back(); $$.is_declared_local = true;}
-        | DOUBLE_COLON ID   {$$.token_val = symbol_table.search_global_id(tokenList.back().getLexem()); $$.is_declared_local = false;}
-        | member                            {$$.token_val = nullptr; $$.is_declared_local = false;}
+lvalue: ID      {
+                        tmp = lookup_scope(yylval.str_val, 0);
+                        if(tmp != NULL && tmp->type == LIBFUNCTION)
+                                yyerror("Trying to shadow libfunction");
+                        else if(tmp = lookup_scope(yylval.str_val,scope) != NULL){
+                                $$ = tmp;
+                        }
+                        
+
+                } 
+        | LOCAL ID             // {$$.token_val = &tokenList.back(); $$.is_declared_local = true;}
+        | DOUBLE_COLON ID  // {$$.token_val = symbol_table.search_global_id(tokenList.back().getLexem()); $$.is_declared_local = false;}
+        | member                        //    {$$.token_val = nullptr; $$.is_declared_local = false;}
         ;
 
 member: lvalue DOT ID                   {}
-        | lvalue LEFT_SUBSCRIPT expr RIGHT_SUBSCRIPT    {}
+        | lvalue LEFT_SQUARE expr RIGHT_SQUARE    {}
         | call DOT ID                   {}
-        | call LEFT_SUBSCRIPT expr RIGHT_SUBSCRIPT      {}
+        | call LEFT_SQUARE expr RIGHT_SQUARE      {}
         ;
 
 call:   call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
@@ -199,7 +209,7 @@ normcall:   LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
 methodcall: DOUBLE_DOT ID LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
             ;
 
-elist:  LEFT_SUBSCRIPT expressionlist RIGHT_SUBSCRIPT
+elist:  LEFT_SQUARE expressionlist RIGHT_SQUARE
         ;
 
 expressionlist: expr 
@@ -207,32 +217,32 @@ expressionlist: expr
                 |expressionlisterror
                 ;
 
-expressionlisterror: expressionlist COMMA RIGHT_PARENTHESIS {cerr<<"Error: invalid RIGHT_PARENTHESIS";} 
-                   | expressionlist COMMA RIGHT_SUBSCRIPT {cerr<<"Error: invalid RIGHT_SUBSCRIPT";}
-                   | expressionlist COMMA LEFT_SUBSCRIPT {cerr<<"Error: invalid operator and RIGHT_SUBSCRIPT";}
-                   | expressionlist op {cerr<<"Error: invalid operator ";} 
-                   | expressionlist COMMA RIGHT_BRACKET {cerr<<"Error: invalid operator and RIGHT_BRACKET";}
-                   |expressionlist COMMA LEFT_BRACKET {cerr<<"Error: invalid LEFT_BRACKET";}
+expressionlisterror: expressionlist COMMA RIGHT_PARENTHESIS //{cerr<<"Error: invalid RIGHT_PARENTHESIS";} 
+                   | expressionlist COMMA RIGHT_SQUARE //{cerr<<"Error: invalid RIGHT_SUBSCRIPT";}
+                   | expressionlist COMMA LEFT_SQUARE //{cerr<<"Error: invalid operator and RIGHT_SUBSCRIPT";}
+                   | expressionlist op //{cerr<<"Error: invalid operator ";} 
+                   | expressionlist COMMA RIGHT_CURLY //{cerr<<"Error: invalid operator and RIGHT_BRACKET";}
+                   |expressionlist COMMA LEFT_CURLY //{cerr<<"Error: invalid LEFT_BRACKET";}
 
-objectdef:  LEFT_SUBSCRIPT objectdeflist RIGHT_SUBSCRIPT   
+objectdef:  LEFT_SQUARE objectdeflist RIGHT_SQUARE  
             ;
 
 objectdeflist: elist | indexed 
 ;
 
-indexed:    LEFT_SUBSCRIPT indexedelemlist RIGHT_SUBSCRIPT 
+indexed:    LEFT_SQUARE indexedelemlist RIGHT_SQUARE 
             ;
 
 indexedelemlist: indexedelem
                  | indexedelem COMMA indexedelemlist
                  ;
 
-indexedelem:    LEFT_BRACKET expr COLON expr RIGHT_BRACKET
+indexedelem:    LEFT_CURLY expr COLON expr RIGHT_CURLY
                 ;
 
-indexedelemlisterror:  indexedelemlist LEFT_BRACKET expr expr RIGHT_BRACKET{cerr<<"Error: missing COLON";} 
-                   | indexedelemlist LEFT_BRACKET  COLON expr RIGHT_BRACKET {cerr<<"Error: left expression missing";}
-                   | indexedelemlist LEFT_BRACKET expr COLON expr stmt {cerr<<"Error: RIGHT_BRACKET missing";}
+indexedelemlisterror:  indexedelemlist LEFT_CURLY expr expr RIGHT_CURLY //{cerr<<"Error: missing COLON";} 
+                   | indexedelemlist LEFT_CURLY   COLON expr RIGHT_CURLY //{cerr<<"Error: left expression missing";}
+                   | indexedelemlist LEFT_CURLY  expr COLON expr stmt //{cerr<<"Error: RIGHT_BRACKET missing";}
 ;
 
 
@@ -240,14 +250,14 @@ block:  blockopenscope stmt blockclosescope
         |blockerror
         ;
 
-blockopenscope: LEFT_BRACKET { if(increment_scope) symbol_table.initialise_new_scope(); }
+blockopenscope: LEFT_CURLY //{ if(increment_scope) symbol_table.initialise_new_scope(); }
                 ;
 
-blockclosescope: RIGHT_BRACKET { increment_scope=true; symbol_table.conclude_scope(); }
+blockclosescope: RIGHT_CURLY //{ increment_scope=true; symbol_table.conclude_scope(); }
                  ;
 
-blockerror: blockopenscope stmt {cerr<<"Error: block has not closed! RIGHT_BRACKET expected!";}
-            |blockclosescope {cerr<<"Error: You have more RIGHT_BRACKET than LEFT_BRACKET!";}
+blockerror: blockopenscope stmt //{cerr<<"Error: block has not closed! RIGHT_BRACKET expected!";}
+            |blockclosescope //{cerr<<"Error: You have more RIGHT_BRACKET than LEFT_BRACKET!";}
             ;
 
 
@@ -255,33 +265,33 @@ funcdef:    FUNCTION functioname funcdefopenscope idlist RIGHT_PARENTHESIS block
             |functionerror
             ;
 
-functioname: ID {symbol_table.define_function(&tokenList.back());}
+functioname: ID //{symbol_table.define_function(&tokenList.back());}
              |  {
-                sprintf(buf,"$%d",anonymous_function_counter);
-                anonymous_function_counter++; 
-                insert(buf,FUNCTION,yylineno,scope);
+                        sprintf(buf,"$%d",anonymous_function_counter);
+                        anonymous_function_counter++; 
+                        insert(buf,FUNCTION,yylineno,scope);
                 }
              ;
 
-funcdefopenscope: LEFT_PARENTHESIS { increment_scope=false; symbol_table.initialise_new_scope(); }
+funcdefopenscope: LEFT_PARENTHESIS //{ increment_scope=false; symbol_table.initialise_new_scope(); }
                   ;
 
-functionerror:FUNCTION functioname idlist RIGHT_PARENTHESIS block {cerr<<"Error: LEFT_PARENTHESIS missing!";}
-              | FUNCTION functioname LEFT_PARENTHESIS idlist block {cerr<<"Error: RIGHT_PARENTHESIS missing!"<<endl;}
-              | FUNCTION functioname LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS {cerr<<"Error: black is missing!"<<endl;}
-              | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS {cerr<<"Error: false expression in parenthesis and missing block of stmts";}
-              | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS block {cerr<<"Error: false expression in parenthesis";}
+functionerror:FUNCTION functioname idlist RIGHT_PARENTHESIS block //{cerr<<"Error: LEFT_PARENTHESIS missing!";}
+              | FUNCTION functioname LEFT_PARENTHESIS idlist block //{cerr<<"Error: RIGHT_PARENTHESIS missing!"<<endl;}
+              | FUNCTION functioname LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS //{cerr<<"Error: black is missing!"<<endl;}
+              | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS //{cerr<<"Error: false expression in parenthesis and missing block of stmts";}
+              | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS block //{cerr<<"Error: false expression in parenthesis";}
 ;
 
 const:  CONST_REAL | CONST_INT | CONST_STRING | NIL | TRUE | FALSE
         ;
 
-idlist: ID                 {symbol_table.search_formal_identifier(&tokenList.back());}
-        | ID COMMA idlist  {symbol_table.search_formal_identifier(&tokenList.back());}
+idlist: ID                 //{symbol_table.search_formal_identifier(&tokenList.back());}
+        | ID COMMA idlist  //{symbol_table.search_formal_identifier(&tokenList.back());}
         | idlisterror
         ;
 
-idlisterror: ID COMMA LEFT_PARENTHESIS {cerr<<"Error: ID expected";}
+idlisterror: ID COMMA LEFT_PARENTHESIS //{cerr<<"Error: ID expected";}
             ;
 
 ifstmt: IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt 
@@ -299,18 +309,18 @@ forstmt:    FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARE
             | forstmterror 
             ;
 
-forstmterror:   FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS stmt {cerr<<"Error: missing the first SEMICOLON";}
-                |FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS {cerr<<"Error: missing the first SEMICOLON";}
-                |FOR elist SEMICOLON expr elist RIGHT_PARENTHESIS stmt {cerr<<"Error: missing the second SEMICOLON";}
-                |FOR RIGHT_PARENTHESIS elist LEFT_PARENTHESIS {cerr<<"Error: missing the SEMICOLONs";}
-                |FOR RIGHT_PARENTHESIS LEFT_PARENTHESIS {cerr<< "Error: missing the SEMICOLONs";}
+forstmterror:   FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS stmt //{cerr<<"Error: missing the first SEMICOLON";}
+                |FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS //{cerr<<"Error: missing the first SEMICOLON";}
+                |FOR elist SEMICOLON expr elist RIGHT_PARENTHESIS stmt //{cerr<<"Error: missing the second SEMICOLON";}
+                |FOR RIGHT_PARENTHESIS elist LEFT_PARENTHESIS //{cerr<<"Error: missing the SEMICOLONs";}
+                |FOR RIGHT_PARENTHESIS LEFT_PARENTHESIS //{cerr<< "Error: missing the SEMICOLONs";}
 ;
 
-parenthesiserror: RIGHT_PARENTHESIS {cerr<<"Error: more RIGHT_PARENTHESISs than LEFT_PARENTHESIS";}
-                 |LEFT_PARENTHESIS expr RIGHT_BRACKET {cerr<<"Error: invalid RIGHT_BRACKET";}
-                 |LEFT_PARENTHESIS expr LEFT_BRACKET {cerr<<"Error: invalid LEFT_BRACKET";}
+parenthesiserror: RIGHT_PARENTHESIS //{cerr<<"Error: more RIGHT_PARENTHESISs than LEFT_PARENTHESIS";}
+                 |LEFT_PARENTHESIS expr RIGHT_CURLY //{cerr<<"Error: invalid RIGHT_BRACKET";}
+                 |LEFT_PARENTHESIS expr LEFT_CURLY //{cerr<<"Error: invalid LEFT_BRACKET";}
 ;
-specialparenthesiserror: LEFT_PARENTHESIS stmt {cerr<<"Error: invalid position for stmt";}
+specialparenthesiserror: LEFT_PARENTHESIS stmt //{cerr<<"Error: invalid position for stmt";}
                         | parenthesiserror
 ;
 
@@ -318,7 +328,7 @@ returnstmt: RETURN returnstmts  {}
 
 returnstmts: expr SEMICOLON {}
              | SEMICOLON
-             | op SEMICOLON {cerr<<"Error: missing the SEMICOLONs";}
+             | op SEMICOLON //{cerr<<"Error: missing the SEMICOLONs";}
              ;
 
 
@@ -330,7 +340,7 @@ ignore: BLOCK_COMMENT | COMMENT_LINE | COMMENT_NESTED ;
 %%
 
 int yyerror(char* message){
-        fprintf(stderr,"%s at line &d, before token: %s\n",message,yylineno,yytext);
+        fprintf(stderr,"%s at line %d, before token: %s\n",message,yylineno,yytext);
         return 1;
 }
 

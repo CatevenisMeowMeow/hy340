@@ -1,7 +1,7 @@
 all: al.c
 	flex --outfile=al.c al.l
-	bison --yacc --defines --output=parser.c parser.y
-	gcc  -o calc al.c parser.c symTable.h
+	bison -v --yacc --defines --output=parser.c parser.y
+	gcc  -g -o calc al.c parser.c sym_table.h 
 
 clean:
-	rm calc
+	rm calc parser.c parser.h parser.output al.c
