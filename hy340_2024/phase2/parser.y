@@ -101,6 +101,7 @@
 %left ELSE                        // Prioritize reduction ELSE.
 
 
+
 //End of priority rules
 
 %%
@@ -177,7 +178,7 @@ lvalue: ID      {
                         tmp = lookup_scope(yylval.str_val, 0);
                         if(tmp != NULL && tmp->type == LIBFUNCTION)
                                 yyerror("Trying to shadow libfunction");
-                        else if(tmp = lookup_scope(yylval.str_val,scope) != NULL){
+                        else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL){
                                 $$ = tmp;
                         }
                         
@@ -269,7 +270,8 @@ functioname: ID //{symbol_table.define_function(&tokenList.back());}
              |  {
                         sprintf(buf,"$%d",anonymous_function_counter);
                         anonymous_function_counter++; 
-                        insert(buf,FUNCTION,yylineno,scope);
+                        insert(buf,USERFUNCTION,yylineno,scope);
+                        printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
                 }
              ;
 
@@ -341,16 +343,8 @@ ignore: BLOCK_COMMENT | COMMENT_LINE | COMMENT_NESTED ;
 
 int yyerror(char* message){
         fprintf(stderr,"%s at line %d, before token: %s\n",message,yylineno,yytext);
-        return 1;
 }
 
-/*
-int yylex(){
-    return alpha_yylex(nullptr);
-}
-*/
-
-//int yywrap(){return 1;}
 
 int main( int argc, char** argv) {
 

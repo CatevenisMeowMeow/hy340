@@ -224,6 +224,6 @@ COMMENT_NESTED           "/*"
 
 <COMMENT>.|\n 			{}
 
-<<EOF>> return 0;
+<<EOF>> return 1;
 
 %%
