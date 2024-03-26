@@ -219,7 +219,7 @@ COMMENT_NESTED           "/*"
 
 <COMMENT>"/*" 			{
 							comment_token_counter++;
-						}
+						}						
 
 <COMMENT>.|\n 			{}
 
@@ -238,7 +238,9 @@ int main(int argc,char** argv) {
 		yyin=stdin;
 	}
 	alpha_yylex(head);
-	printf("Lexical Analysis:\n");
+	printf("\033[1;33m");
+	printf("--------------------------------      Lexical Analysis      --------------------------------\n");
+	printf("\033[0m");
 	print_tokens();
 	return 0;
 }
