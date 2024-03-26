@@ -2,6 +2,7 @@
 %{
         #include<stdio.h>
         #include<stdlib.h>
+        #include<string.h>
         #include "sym_table.h"
         #define YY_DECL int alpha_yylex(void* ylval)
        
@@ -10,14 +11,13 @@
         extern int yylineno;
         extern char* yytext;
         extern FILE* yyin;
+        extern FILE* yyout;
 
         int scope = 0;
         int anonymous_function_counter = 0;
         char buf[32];
-        symrec* tmp;
+        symrec* tmp = NULL;
         
-
-
 %}
 
 %start program
@@ -77,10 +77,11 @@
 %token <str_val> ID
 %token <int_val> CONST_INT
 %token <double_val> CONST_REAL
-%token <str_val> CONST_STRING
+%token <str_val> STRING
 %token COMMENT_NESTED
 %token BLOCK_COMMENT
 %token COMMENT_LINE
+
 
 //Priority rules
 
@@ -107,20 +108,14 @@
 %%
 
 
-program:   stmts   {}
+program: {printf("Started compiling...\n");}  stmts 
             ;
 
 
-stmts : stmt stmtreduce
-        ;
 
 
-stmtreduce: stmt stmtreduce
-            |
-            ;
 
-
-stmt:   expr SEMICOLON
+stmt:   expr SEMICOLON{printf("expr SEMICOLON\n");}
         | ifstmt
         | whilestmt
         | forstmt
@@ -129,14 +124,17 @@ stmt:   expr SEMICOLON
         | CONTINUE SEMICOLON
         | block
         | funcdef
+        | SEMICOLON {printf("expr SEMICOLON\n");}
       //  | ignore
-       // | error {cerr<<"Error: invalid stmt";}
+        ;
+
+stmts: stmt  stmts
+        |
         ;
 
 expr:   assignexpr
         | expr op expr %prec EXPRESSION_READ_NEXT_CHARACTER
         | term
-       // | error SEMICOLON {cerr<<"Error: expression expected!";}
         ;
 
 op: PLUS 
@@ -169,14 +167,14 @@ assignexpr: lvalue ASSIGN expr {if($1 != NULL && ($1->type == USERFUNCTION || $1
                                 }
             ;
 
-primary:    lvalue //{lvalue_action($1.is_declared_local, $1.token_val);}
+primary:    lvalue {printf("aaaaaa\n");}
             | call
             | objectdef
             | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
             | const
             ;
 
-lvalue: ID      {
+lvalue: ID      {       printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
                         tmp = lookup_scope(yylval.str_val, 0);
                         if(tmp != NULL && tmp->type == LIBFUNCTION)
                                 yyerror("Trying to shadow libfunction");
@@ -198,10 +196,10 @@ lvalue: ID      {
         | member        {}                
         ;
 
-member: lvalue DOT ID                   {}
-        | lvalue LEFT_SQUARE expr RIGHT_SQUARE    {}
-        | call DOT ID                   {}
-        | call LEFT_SQUARE expr RIGHT_SQUARE      {}
+member: lvalue DOT ID                   
+        | lvalue LEFT_SQUARE expr RIGHT_SQUARE    
+        | call DOT ID                   
+        | call LEFT_SQUARE expr RIGHT_SQUARE      
         ;
 
 call:   call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
@@ -224,15 +222,8 @@ elist:  LEFT_SQUARE expressionlist RIGHT_SQUARE
 
 expressionlist: expr 
                 | expr COMMA expressionlist
-              //  |expressionlisterror
                 ;
 
-//expressionlisterror: expressionlist COMMA RIGHT_PARENTHESIS //{cerr<<"Error: invalid RIGHT_PARENTHESIS";} 
-  //                 | expressionlist COMMA RIGHT_SQUARE //{cerr<<"Error: invalid RIGHT_SUBSCRIPT";}
-    //               | expressionlist COMMA LEFT_SQUARE //{cerr<<"Error: invalid operator and RIGHT_SUBSCRIPT";}
-      //             | expressionlist op //{cerr<<"Error: invalid operator ";} 
-        //           | expressionlist COMMA RIGHT_CURLY //{cerr<<"Error: invalid operator and RIGHT_BRACKET";}
-          //         |expressionlist COMMA LEFT_CURLY //{cerr<<"Error: invalid LEFT_BRACKET";}
 
 objectdef:  LEFT_SQUARE objectdeflist RIGHT_SQUARE  
             ;
@@ -250,27 +241,27 @@ indexedelemlist: indexedelem
 indexedelem:    LEFT_CURLY expr COLON expr RIGHT_CURLY
                 ;
 
-//indexedelemlisterror:  indexedelemlist LEFT_CURLY expr expr RIGHT_CURLY //{cerr<<"Error: missing COLON";} 
-          //        | indexedelemlist LEFT_CURLY   COLON expr RIGHT_CURLY //{cerr<<"Error: left expression missing";}
-        //           | indexedelemlist LEFT_CURLY  expr COLON expr stmt //{cerr<<"Error: RIGHT_BRACKET missing";}
-//;
-
-
-block:  LEFT_CURLY{scope++;} stmt RIGHT_CURLY{hide_scope(scope); scope--;}
-       //|blockerror
+block:  LEFT_CURLY{scope++;} stmts RIGHT_CURLY{hide_scope(scope); scope--;}
         ;
 
 
-//blockerror: LEFT_CURLY stmt //{cerr<<"Error: block has not closed! RIGHT_BRACKET expected!";}
-  //          |RIGHT_CURLY //{cerr<<"Error: You have more RIGHT_BRACKET than LEFT_BRACKET!";}
-    //        ;
-
-
 funcdef:    FUNCTION functioname LEFT_PARENTHESIS{scope++;} idlist RIGHT_PARENTHESIS{scope--;} block
-          //  |functionerror
             ;
 
-functioname: ID //{symbol_table.define_function(&tokenList.back());}
+functioname: ID {
+                        if(is_library_function(yylval.str_val)){
+                                yyerror("Trying to shadow libfunction\n");
+                        }
+                        else{
+                                tmp = lookup_scope(yylval.str_val,scope);
+                                if(tmp != NULL){
+                                        yyerror("Symbol name already exists");
+                                }
+                                else{
+                                        insert(yylval.str_val, USERFUNCTION, yylineno, scope);
+                                }
+                        }
+                }
              |  {
                         sprintf(buf,"$%d",anonymous_function_counter);
                         anonymous_function_counter++; 
@@ -280,55 +271,51 @@ functioname: ID //{symbol_table.define_function(&tokenList.back());}
              ;
 
 
-//functionerror:FUNCTION functioname idlist RIGHT_PARENTHESIS block //{cerr<<"Error: LEFT_PARENTHESIS missing!";}
-   //           | FUNCTION functioname LEFT_PARENTHESIS idlist block //{cerr<<"Error: RIGHT_PARENTHESIS missing!"<<endl;}
-     //         | FUNCTION functioname LEFT_PARENTHESIS idlist RIGHT_PARENTHESIS //{cerr<<"Error: black is missing!"<<endl;}
-       //       | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS //{cerr<<"Error: false expression in parenthesis and missing block of stmts";}
-         //     | FUNCTION functioname LEFT_PARENTHESIS op RIGHT_PARENTHESIS block //{cerr<<"Error: false expression in parenthesis";}
-//;
-
-const:  CONST_REAL | CONST_INT | CONST_STRING | NIL | TRUE | FALSE
+const:  CONST_REAL | CONST_INT | STRING | NIL | TRUE | FALSE
         ;
 
-idlist: ID                 //{symbol_table.search_formal_identifier(&tokenList.back());}
-        | ID COMMA idlist  //{symbol_table.search_formal_identifier(&tokenList.back());}
-       // | idlisterror
+idlist: ID                 {
+                                        if(is_library_function(yylval.str_val))
+                                                yyerror("Trying to shadow libfunction");
+                                        else{
+                                                tmp = lookup_scope(yylval.str_val,scope);
+                                                if(tmp != NULL)
+                                                        yyerror("Multiple formal args detected");
+                                                else{
+                                                        insert(yylval.str_val,FORMAL,yylineno,scope);
+                                                }
+                                        }     
+                                }
+        | ID {
+                                        if(is_library_function(yylval.str_val))
+                                                yyerror("Trying to shadow libfunction");
+                                        else{
+                                                tmp = lookup_scope(yylval.str_val,scope);
+                                                if(tmp != NULL)
+                                                        yyerror("Multiple formal args detected");
+                                                else{
+                                                        insert(yylval.str_val,FORMAL,yylineno,scope);
+                                                }
+                                        }     
+                                } COMMA idlist  
         ;
 
-//idlisterror: ID COMMA LEFT_PARENTHESIS //{cerr<<"Error: ID expected";}
-  //          ;
 
 ifstmt: IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt 
         | IF LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt ELSE stmt
-       // | IF specialparenthesiserror 
         ;
 
 
 whilestmt:  WHILE LEFT_PARENTHESIS expr RIGHT_PARENTHESIS stmt
-           // | WHILE specialparenthesiserror
             ;
 
 forstmt:    FOR LEFT_PARENTHESIS elist SEMICOLON expr SEMICOLON elist RIGHT_PARENTHESIS stmt
-         //   | FOR parenthesiserror 
-          //  | forstmterror 
             ;
 
-//forstmterror:   FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS stmt //{cerr<<"Error: missing the first SEMICOLON";}
-  //              |FOR LEFT_PARENTHESIS elist expr SEMICOLON elist RIGHT_PARENTHESIS //{cerr<<"Error: missing the first SEMICOLON";}
-    //            |FOR elist SEMICOLON expr elist RIGHT_PARENTHESIS stmt //{cerr<<"Error: missing the second SEMICOLON";}
-      //          |FOR RIGHT_PARENTHESIS elist LEFT_PARENTHESIS //{cerr<<"Error: missing the SEMICOLONs";}
-        //        |FOR RIGHT_PARENTHESIS LEFT_PARENTHESIS //{cerr<< "Error: missing the SEMICOLONs";}
-//;
-
-//parenthesiserror: RIGHT_PARENTHESIS //{cerr<<"Error: more RIGHT_PARENTHESISs than LEFT_PARENTHESIS";}
-  //               |LEFT_PARENTHESIS expr RIGHT_CURLY //{cerr<<"Error: invalid RIGHT_BRACKET";}
-    //             |LEFT_PARENTHESIS expr LEFT_CURLY //{cerr<<"Error: invalid LEFT_BRACKET";}
-//;
-//specialparenthesiserror: LEFT_PARENTHESIS stmt //{cerr<<"Error: invalid position for stmt";}
-  //                      | parenthesiserror
-//;
 
 returnstmt: RETURN returnstmts  {}
+        ;
+
 
 returnstmts: expr SEMICOLON {}
              | SEMICOLON
@@ -347,6 +334,8 @@ int yyerror(char* message){
 }
 
 
+
+
 int main( int argc, char** argv) {
 
     if(argc > 1){
@@ -355,11 +344,11 @@ int main( int argc, char** argv) {
                 return 1;
         }
     }
-    else yyin = stdin;
+    else 
+        yyin = stdin;
     insert_library_functions();
     yyparse();
+    printf("Finished compiling\n");
     print_symbol_table();
     return 0;
-
-
 }
