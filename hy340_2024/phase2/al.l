@@ -139,66 +139,82 @@ COMMENT_NESTED           "/*"
 
 %%
 
-{IF}                    {insert_token(yylineno, yylineno, ++token_counter, "if", "IF","KEYWORD");}
-{ELSE}                  {insert_token(yylineno, yylineno, ++token_counter, "else","ELSE","KEYWORD");}
-{WHILE}                 {insert_token(yylineno, yylineno, ++token_counter, "while","WHILE","KEYWORD");}
-{FOR}                   {insert_token(yylineno, yylineno, ++token_counter, "for","FOR","KEYWORD");}
-{FUNCTION}              {insert_token(yylineno, yylineno, ++token_counter, "function","FUNCTION" ,"KEYWORD");}
-{RETURN}                {insert_token(yylineno, yylineno, ++token_counter, "return","RETURN", "KEYWORD");}
-{BREAK}                 {insert_token(yylineno, yylineno, ++token_counter, "break", "BREAK","KEYWORD");}
-{CONTINUE}              {insert_token(yylineno, yylineno, ++token_counter, "continue","CONTINUE", "KEYWORD");}
-{AND}                   {insert_token(yylineno, yylineno, ++token_counter, "and","AND" ,"KEYWORD");}
-{NOT}                   {insert_token(yylineno, yylineno, ++token_counter, "not", "NOT","KEYWORD");}
-{OR}                    {insert_token(yylineno, yylineno, ++token_counter, "or","OR" ,"KEYWORD");}
-{LOCAL}                 {insert_token(yylineno, yylineno, ++token_counter, "local","LOCAL" ,"KEYWORD");}
-{TRUE}                  {insert_token(yylineno, yylineno, ++token_counter, "true", "TRUE","KEYWORD");}
-{FALSE}                 {insert_token(yylineno, yylineno, ++token_counter, "false","FALSE" ,"KEYWORD");}
-{NIL}                   {insert_token(yylineno, yylineno, ++token_counter, "nil", "NIL","KEYWORD");}
+{IF}                    {insert_token(yylineno, yylineno, ++token_counter, "if", "IF","KEYWORD"); return IF;}
+{ELSE}                  {insert_token(yylineno, yylineno, ++token_counter, "else","ELSE","KEYWORD"); return ELSE;}
+{WHILE}                 {insert_token(yylineno, yylineno, ++token_counter, "while","WHILE","KEYWORD"); return WHILE;}
+{FOR}                   {insert_token(yylineno, yylineno, ++token_counter, "for","FOR","KEYWORD"); return FOR;}
+{FUNCTION}              {insert_token(yylineno, yylineno, ++token_counter, "function","FUNCTION" ,"KEYWORD"); return FUNCTION;}
+{RETURN}                {insert_token(yylineno, yylineno, ++token_counter, "return","RETURN", "KEYWORD"); return RETURN;}
+{BREAK}                 {insert_token(yylineno, yylineno, ++token_counter, "break", "BREAK","KEYWORD"); return BREAK;}
+{CONTINUE}              {insert_token(yylineno, yylineno, ++token_counter, "continue","CONTINUE", "KEYWORD"); return CONTINUE;}
+{AND}                   {insert_token(yylineno, yylineno, ++token_counter, "and","AND" ,"KEYWORD"); return AND;}
+{NOT}                   {insert_token(yylineno, yylineno, ++token_counter, "not", "NOT","KEYWORD"); return NOT;}
+{OR}                    {insert_token(yylineno, yylineno, ++token_counter, "or","OR" ,"KEYWORD"); return OR;}
+{LOCAL}                 {insert_token(yylineno, yylineno, ++token_counter, "local","LOCAL" ,"KEYWORD"); return LOCAL;}
+{TRUE}                  {insert_token(yylineno, yylineno, ++token_counter, "true", "TRUE","KEYWORD"); return TRUE;}
+{FALSE}                 {insert_token(yylineno, yylineno, ++token_counter, "false","FALSE" ,"KEYWORD"); return FALSE;}
+{NIL}                   {insert_token(yylineno, yylineno, ++token_counter, "nil", "NIL","KEYWORD"); return NIL;}
 
-{EQUAL}					{insert_token(yylineno, yylineno, ++token_counter, "==","EQUAL" ,"OPERATOR");}
-{ASSIGN}				{insert_token(yylineno, yylineno, ++token_counter, "=", "ASSIGN","OPERATOR");}
-{PLUS_PLUS}				{insert_token(yylineno, yylineno, ++token_counter, "++","PLUS_PLUS" ,"OPERATOR");}
-{PLUS}					{insert_token(yylineno, yylineno, ++token_counter, "+","PLUS" ,"OPERATOR");}
-{MINUS_MINUS}			{insert_token(yylineno, yylineno, ++token_counter, "--", "MINUS_MINUS","OPERATOR");}
-{MINUS}					{insert_token(yylineno, yylineno, ++token_counter, "-","MINUS" ,"OPERATOR");}
-{MODULO}				{insert_token(yylineno, yylineno, ++token_counter, "%", "MODULO","OPERATOR");}
-{NOT_EQUAL}				{insert_token(yylineno, yylineno, ++token_counter, "!=", "NOT_EQUAL","OPERATOR");}
-{GREATER_EQUAL}	        {insert_token(yylineno, yylineno, ++token_counter, ">=","GREATER_EQUAL" ,"OPERATOR");}
-{GREATER}			    {insert_token(yylineno, yylineno, ++token_counter, ">", "GREATER","OPERATOR");}
-{LESS_EQUAL}		    {insert_token(yylineno, yylineno, ++token_counter, "<=", "LESS_EQUAL","OPERATOR");}
-{LESS}				    {insert_token(yylineno, yylineno, ++token_counter, "<", "LESS","OPERATOR");}
-{MULTIPLICATION}		{insert_token(yylineno, yylineno, ++token_counter, "*","MULTIPLICATION" ,"OPERATOR");}
-{DIVISION}				{insert_token(yylineno, yylineno, ++token_counter, "/", "DIVISION","OPERATOR");}
+{EQUAL}					{insert_token(yylineno, yylineno, ++token_counter, "==","EQUAL" ,"OPERATOR"); return EQUAL;}
+{ASSIGN}				{insert_token(yylineno, yylineno, ++token_counter, "=", "ASSIGN","OPERATOR"); return ASSIGN;}
+{PLUS_PLUS}				{insert_token(yylineno, yylineno, ++token_counter, "++","PLUS_PLUS" ,"OPERATOR"); return PLUS_PLUS;}
+{PLUS}					{insert_token(yylineno, yylineno, ++token_counter, "+","PLUS" ,"OPERATOR"); return PLUS;}
+{MINUS_MINUS}			{insert_token(yylineno, yylineno, ++token_counter, "--", "MINUS_MINUS","OPERATOR"); return MINUS_MINUS;}
+{MINUS}					{insert_token(yylineno, yylineno, ++token_counter, "-","MINUS" ,"OPERATOR"); return MINUS;}
+{MODULO}				{insert_token(yylineno, yylineno, ++token_counter, "%", "MODULO","OPERATOR"); return MODULO;}
+{NOT_EQUAL}				{insert_token(yylineno, yylineno, ++token_counter, "!=", "NOT_EQUAL","OPERATOR"); return NOT_EQUAL;}
+{GREATER_EQUAL}	        {insert_token(yylineno, yylineno, ++token_counter, ">=","GREATER_EQUAL" ,"OPERATOR"); return GREATER_EQUAL;}
+{GREATER}			    {insert_token(yylineno, yylineno, ++token_counter, ">", "GREATER","OPERATOR"); return GREATER;}
+{LESS_EQUAL}		    {insert_token(yylineno, yylineno, ++token_counter, "<=", "LESS_EQUAL","OPERATOR"); return LESS_EQUAL;}
+{LESS}				    {insert_token(yylineno, yylineno, ++token_counter, "<", "LESS","OPERATOR"); return LESS;}
+{MULTIPLICATION}		{insert_token(yylineno, yylineno, ++token_counter, "*","MULTIPLICATION" ,"OPERATOR"); return MULTIPLICATION;}
+{DIVISION}				{insert_token(yylineno, yylineno, ++token_counter, "/", "DIVISION","OPERATOR"); return DIVISION;}
 
-{CONST_INT}				{insert_token(yylineno, yylineno, ++token_counter, yytext, "","CONST_INT");}
-{CONST_REAL}			{insert_token(yylineno, yylineno, ++token_counter, yytext, "","CONST_REAL");}
+{CONST_INT}				{
+							insert_token(yylineno, yylineno, ++token_counter, yytext, "","CONST_INT");
+							yylval.int_val = atoi(yytext);
+							return CONST_INT;
+						}
+{CONST_REAL}			{
+							insert_token(yylineno, yylineno, ++token_counter, yytext, "","CONST_REAL");
+							yylval.double_val = atof(yytext);
+							return CONST_REAL;
+						}
 
 
-{LEFT_CURLY}			{insert_token(yylineno, yylineno, ++token_counter, "{", "LEFT_CURLY", "PUNCTUATION");}
-{RIGHT_CURLY}			{insert_token(yylineno, yylineno, ++token_counter, "}", "RIGHT_CURLY", "PUNCTUATION");}
-{LEFT_SQUARE}			{insert_token(yylineno, yylineno, ++token_counter, "[", "LEFT_SQUARE", "PUNCTUATION");}
-{RIGHT_SQUARE}			{insert_token(yylineno, yylineno, ++token_counter, "]", "RIGHT_SQUARE", "PUNCTUATION");}
-{LEFT_PARENTHESIS}		{insert_token(yylineno, yylineno, ++token_counter, "(", "LEFT_PARENTHESIS", "PUNCTUATION");}
-{RIGHT_PARENTHESIS}		{insert_token(yylineno, yylineno, ++token_counter, ")", "RIGHT_PARENTHESIS", "PUNCTUATION");}
-{SEMICOLON}				{insert_token(yylineno, yylineno, ++token_counter, ";", "SEMICOLON", "PUNCTUATION");}
-{COMMA}					{insert_token(yylineno, yylineno, ++token_counter, ",", "COMMA", "PUNCTUATION");}
-{DOUBLE_COLON}			{insert_token(yylineno, yylineno, ++token_counter, "::", "DOUBLE_COLON", "PUNCTUATION");}
-{COLON}					{insert_token(yylineno, yylineno, ++token_counter, ":", "COLON", "PUNCTUATION");}
-{DOUBLE_DOT}			{insert_token(yylineno, yylineno, ++token_counter, "..", "DOUBLE_DOT","PUNCTUATION");}
-{DOT}					{insert_token(yylineno, yylineno, ++token_counter, ".", "DOT", "PUNCTUATION");}
+{LEFT_CURLY}			{insert_token(yylineno, yylineno, ++token_counter, "{", "LEFT_CURLY", "PUNCTUATION"); return LEFT_CURLY;}
+{RIGHT_CURLY}			{insert_token(yylineno, yylineno, ++token_counter, "}", "RIGHT_CURLY", "PUNCTUATION"); return RIGHT_CURLY;}
+{LEFT_SQUARE}			{insert_token(yylineno, yylineno, ++token_counter, "[", "LEFT_SQUARE", "PUNCTUATION"); return LEFT_SQUARE;}
+{RIGHT_SQUARE}			{insert_token(yylineno, yylineno, ++token_counter, "]", "RIGHT_SQUARE", "PUNCTUATION"); return RIGHT_SQUARE;}
+{LEFT_PARENTHESIS}		{insert_token(yylineno, yylineno, ++token_counter, "(", "LEFT_PARENTHESIS", "PUNCTUATION"); return LEFT_PARENTHESIS;}
+{RIGHT_PARENTHESIS}		{insert_token(yylineno, yylineno, ++token_counter, ")", "RIGHT_PARENTHESIS", "PUNCTUATION"); return RIGHT_PARENTHESIS;}
+{SEMICOLON}				{insert_token(yylineno, yylineno, ++token_counter, ";", "SEMICOLON", "PUNCTUATION"); return SEMICOLON;}
+{COMMA}					{insert_token(yylineno, yylineno, ++token_counter, ",", "COMMA", "PUNCTUATION"); return COMMA;}
+{DOUBLE_COLON}			{insert_token(yylineno, yylineno, ++token_counter, "::", "DOUBLE_COLON", "PUNCTUATION"); return DOUBLE_COLON;}
+{COLON}					{insert_token(yylineno, yylineno, ++token_counter, ":", "COLON", "PUNCTUATION"); return COLON;}
+{DOUBLE_DOT}			{insert_token(yylineno, yylineno, ++token_counter, "..", "DOUBLE_DOT","PUNCTUATION"); return DOUBLE_DOT;}
+{DOT}					{insert_token(yylineno, yylineno, ++token_counter, ".", "DOT", "PUNCTUATION"); return DOT;}
 
-{STRING}				{insert_token(yylineno, yylineno, ++token_counter, yytext,"","STRING");}
+{STRING}				{
+							insert_token(yylineno, yylineno, ++token_counter, yytext,"","STRING");
+							yylval.str_val = strdup(yytext);
+							return STRING;	
+						}
 {ERROR_STRING}			{
 							fprintf(stderr, "String beggining at line %d does not close\n", yylineno);
-							exit(0);
+							return 1;
 						}
-{ID}					{insert_token(yylineno, yylineno, ++token_counter, yytext,"","ID");}
+{ID}					{
+							insert_token(yylineno, yylineno, ++token_counter, yytext,"","ID");
+							yylval.str_val = strdup(yytext);
+							return ID;
+						}
 {SPACE}					{}
 {COMMENT_LINE}			{insert_token(yylineno, yylineno, ++token_counter,"//","", "COMMENT LINE_COMMENT");}
 
 .						{
 							printf("Undefined input %s in line %d\n", yytext, yylineno);
-							exit(0);
+							return 0;
 						}
 
 "/*"					{
@@ -224,6 +240,6 @@ COMMENT_NESTED           "/*"
 
 <COMMENT>.|\n 			{}
 
-<<EOF>> return 1;
+<<EOF>> return EOF;
 
 %%

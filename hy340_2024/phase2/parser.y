@@ -27,7 +27,6 @@
         double double_val;
         char *str_val;
         struct sym_table *node;
-
 }
 
 %type <node> lvalue
@@ -115,7 +114,7 @@ program: {printf("Started compiling...\n");}  stmts
 
 
 
-stmt:   expr SEMICOLON{printf("expr SEMICOLON\n");}
+stmt:   expr SEMICOLON
         | ifstmt
         | whilestmt
         | forstmt
@@ -124,11 +123,11 @@ stmt:   expr SEMICOLON{printf("expr SEMICOLON\n");}
         | CONTINUE SEMICOLON
         | block
         | funcdef
-        | SEMICOLON {printf("expr SEMICOLON\n");}
+        | SEMICOLON 
       //  | ignore
         ;
 
-stmts: stmt  stmts
+stmts: stmt stmts
         |
         ;
 
@@ -167,19 +166,25 @@ assignexpr: lvalue ASSIGN expr {if($1 != NULL && ($1->type == USERFUNCTION || $1
                                 }
             ;
 
-primary:    lvalue {printf("aaaaaa\n");}
+primary:    lvalue {}
             | call
             | objectdef
             | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
             | const
             ;
 
-lvalue: ID      {       printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
+lvalue: ID      {       
                         tmp = lookup_scope(yylval.str_val, 0);
                         if(tmp != NULL && tmp->type == LIBFUNCTION)
                                 yyerror("Trying to shadow libfunction");
                         else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL){
                                 $$ = tmp;
+                        }
+                        else{
+                                if(scope == 0)
+                                        insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                else
+                                        insert(yylval.str_val, LOCALVAR, yylineno, scope);
                         }
                         
 
@@ -189,8 +194,7 @@ lvalue: ID      {       printf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n");
                                 tmp = lookup_scope(yylval.str_val,0);
                                 if(tmp == NULL)
                                         yyerror("Global variable not found");
-                                else
-                                        $$ = tmp;
+                                $$ = tmp;
 
                                 }
         | member        {}                
@@ -217,11 +221,12 @@ normcall:   LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
 methodcall: DOUBLE_DOT ID LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
             ;
 
-elist:  LEFT_SQUARE expressionlist RIGHT_SQUARE
+elist:  expr expressionlist
+        |
         ;
 
-expressionlist: expr 
-                | expr COMMA expressionlist
+expressionlist: COMMA expr expressionlist
+                |
                 ;
 
 
@@ -297,7 +302,8 @@ idlist: ID                 {
                                                         insert(yylval.str_val,FORMAL,yylineno,scope);
                                                 }
                                         }     
-                                } COMMA idlist  
+                                } COMMA idlist
+        |
         ;
 
 
