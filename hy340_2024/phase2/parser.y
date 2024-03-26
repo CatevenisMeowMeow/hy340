@@ -175,21 +175,46 @@ primary:    lvalue {}
 
 lvalue: ID      {       
                         tmp = lookup_scope(yylval.str_val, 0);
-                        if(tmp != NULL && tmp->type == LIBFUNCTION)
+                        if(tmp != NULL && tmp->type == LIBFUNCTION){
                                 yyerror("Trying to shadow libfunction");
+                                $$ = tmp;
+                        }
                         else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL){
                                 $$ = tmp;
                         }
                         else{
-                                if(scope == 0)
+                                if(scope == 0){
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
-                                else
+                                        $$ = tmp;
+                                }
+                                else{
                                         insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                                        $$ = tmp;
+                                }
                         }
                         
 
                 } 
-        | LOCAL ID              {}
+        | LOCAL ID              {
+                                        tmp = lookup_scope(yylval.str_val,scope);
+                                        if(tmp == NULL){
+                                                if(scope == 0){
+                                                        insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                                        $$ = tmp;
+                                                }
+                                                else{
+                                                        insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                                                        $$ = tmp;
+                                                }
+                                        }
+                                        else if(tmp->type == LIBFUNCTION){
+                                                        yyerror("Trying to shadow libfunction");
+                                                        $$ = tmp;
+                                        }
+                                        else{
+                                                $$ = tmp;
+                                        }
+                                }
         | DOUBLE_COLON ID{
                                 tmp = lookup_scope(yylval.str_val,0);
                                 if(tmp == NULL)
