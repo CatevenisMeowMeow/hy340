@@ -175,8 +175,7 @@ primary:    lvalue {}
 
 lvalue: ID      {       
                         tmp = lookup_scope(yylval.str_val, 0);
-                        if(tmp != NULL && tmp->type == LIBFUNCTION){
-                                yyerror("Trying to shadow libfunction");
+                        if(tmp != NULL){
                                 $$ = tmp;
                         }
                         else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL){
@@ -200,10 +199,12 @@ lvalue: ID      {
                                         if(tmp == NULL){
                                                 if(scope == 0){
                                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                                        tmp = lookup_scope(yylval.str_val,scope);
                                                         $$ = tmp;
                                                 }
                                                 else{
                                                         insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                                                        tmp = lookup_scope(yylval.str_val,scope);
                                                         $$ = tmp;
                                                 }
                                         }
@@ -309,8 +310,10 @@ idlist: ID                 {
                                                 yyerror("Trying to shadow libfunction");
                                         else{
                                                 tmp = lookup_scope(yylval.str_val,scope);
-                                                if(tmp != NULL)
-                                                        yyerror("Multiple formal args detected");
+                                                if(tmp != NULL){
+                                                        fprintf(stderr,"Multiple formal args '%s' detected",yylval.str_val);
+                                                        yyerror("");
+                                                }
                                                 else{
                                                         insert(yylval.str_val,FORMAL,yylineno,scope);
                                                 }
@@ -321,8 +324,10 @@ idlist: ID                 {
                                                 yyerror("Trying to shadow libfunction");
                                         else{
                                                 tmp = lookup_scope(yylval.str_val,scope);
-                                                if(tmp != NULL)
-                                                        yyerror("Multiple formal args detected");
+                                                if(tmp != NULL){
+                                                        fprintf(stderr,"Multiple formal args '%s' detected",yylval.str_val);
+                                                        yyerror("");
+                                                }      
                                                 else{
                                                         insert(yylval.str_val,FORMAL,yylineno,scope);
                                                 }
