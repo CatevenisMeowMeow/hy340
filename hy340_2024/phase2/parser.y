@@ -184,10 +184,12 @@ lvalue: ID      {
                         else{
                                 if(scope == 0){
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                        tmp = lookup_scope(yylval.str_val,scope);
                                         $$ = tmp;
                                 }
                                 else{
                                         insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                                        tmp = lookup_scope(yylval.str_val,scope);
                                         $$ = tmp;
                                 }
                         }
@@ -286,7 +288,8 @@ functioname: ID {
                         else{
                                 tmp = lookup_scope(yylval.str_val,scope);
                                 if(tmp != NULL){
-                                        yyerror("Symbol name already exists");
+                                        fprintf(stderr,"Function '%s' already exists",yylval.str_val);
+                                        yyerror("");
                                 }
                                 else{
                                         insert(yylval.str_val, USERFUNCTION, yylineno, scope);
