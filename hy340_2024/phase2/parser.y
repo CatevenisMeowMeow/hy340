@@ -344,7 +344,7 @@ idlist: ID                 {
                                                 yyerror("Trying to shadow libfunction");
                                         else{
                                                 tmp = lookup_scope(yylval.str_val,scope);
-                                                if(tmp != NULL){
+                                                if(tmp != NULL && tmp->active == 1){
                                                         fprintf(stderr,"Multiple formal args '%s' detected",yylval.str_val);
                                                         yyerror("");
                                                 }      
