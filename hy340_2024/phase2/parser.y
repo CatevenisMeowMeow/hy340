@@ -161,9 +161,9 @@ term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS
         | primary
         ;
 
-assignexpr: lvalue ASSIGN expr {if($1 != NULL && ($1->type == USERFUNCTION || $1->type == LIBFUNCTION))
-                                        yyerror("Variable is function");
-                                }
+assignexpr: lvalue{if($1 != NULL && ($1->type == USERFUNCTION || $1->type == LIBFUNCTION))
+                                        yyerror("Variable is defined as function");
+                                } ASSIGN expr 
             ;
 
 primary:    lvalue {}
@@ -176,6 +176,7 @@ primary:    lvalue {}
 lvalue: ID      {       
                         tmp = lookup_scope(yylval.str_val, 0);
                         if(tmp != NULL){
+                                
                                 $$ = tmp;
                         }
                         else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL && tmp->active == 1){
@@ -301,7 +302,10 @@ functioname: ID {
                         else{
                                 tmp = lookup_scope(yylval.str_val,scope);
                                 if(tmp != NULL){
-                                        fprintf(stderr,"error at line %d: Function '%s' already exists at line %d\n",yylineno,yylval.str_val,tmp->line);
+                                        if(tmp->type == GLOBALVAR || tmp->type == LOCALVAR)
+                                                fprintf(stderr,"error at line %d: Function '%s' already defined as variable at line %d\n",yylineno,yylval.str_val,tmp->line);
+                                        else
+                                                fprintf(stderr,"error at line %d: Function '%s' already exists at line %d\n",yylineno,yylval.str_val,tmp->line);
                                         
                                 }
                                 else{
