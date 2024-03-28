@@ -107,7 +107,7 @@
 %%
 
 
-program: {printf("Started compiling...\n");}  stmts 
+program:  stmts 
             ;
 
 
@@ -178,7 +178,7 @@ lvalue: ID      {
                         if(tmp != NULL){
                                 $$ = tmp;
                         }
-                        else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL){
+                        else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL && tmp->active == 1){
                                 $$ = tmp;
                         }
                         else{
@@ -215,7 +215,20 @@ lvalue: ID      {
                                                         $$ = tmp;
                                         }
                                         else{
-                                                $$ = tmp;
+                                                if(tmp->active == 1)
+                                                        $$ = tmp;
+                                                else{
+                                                        if(scope == 0){
+                                                                insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                                                tmp = lookup_scope(yylval.str_val,scope);
+                                                                $$ = tmp;
+                                                        }
+                                                        else{
+                                                                insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                                                                tmp = lookup_scope(yylval.str_val,scope);
+                                                                $$ = tmp;
+                                                        }
+                                                }
                                         }
                                 }
         | DOUBLE_COLON ID{
@@ -288,8 +301,8 @@ functioname: ID {
                         else{
                                 tmp = lookup_scope(yylval.str_val,scope);
                                 if(tmp != NULL){
-                                        fprintf(stderr,"Function '%s' already exists",yylval.str_val);
-                                        yyerror("");
+                                        fprintf(stderr,"error at line %d: Function '%s' already exists at line %d\n",yylineno,yylval.str_val,tmp->line);
+                                        
                                 }
                                 else{
                                         insert(yylval.str_val, USERFUNCTION, yylineno, scope);
@@ -313,7 +326,7 @@ idlist: ID                 {
                                                 yyerror("Trying to shadow libfunction");
                                         else{
                                                 tmp = lookup_scope(yylval.str_val,scope);
-                                                if(tmp != NULL){
+                                                if(tmp != NULL && tmp->active == 1){
                                                         fprintf(stderr,"Multiple formal args '%s' detected",yylval.str_val);
                                                         yyerror("");
                                                 }
@@ -387,7 +400,6 @@ int main( int argc, char** argv) {
         yyin = stdin;
     insert_library_functions();
     yyparse();
-    printf("Finished compiling\n");
     print_symbol_table();
     return 0;
 }
