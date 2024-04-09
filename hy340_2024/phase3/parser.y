@@ -13,7 +13,7 @@
         extern FILE* yyin;
         extern FILE* yyout;
 
-        int scope = 0;
+       
         int anonymous_function_counter = 0;
         char buf[32];
         symrec* tmp = NULL;

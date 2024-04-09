@@ -1,5 +1,17 @@
 #include"sym_table.h"
 
+#define MAX_TEMP_NAME 8
+
+//Global vars
+int temp_values_counter = 0;
+
+//Global vars from lectures
+unsigned programVarOffset = 0;
+unsigned functionLocalOffset = 0;
+unsigned formalArgOffset = 0;
+unsigned scopeSpaceCounter = 1;
+
+
 
 //from lectures
 typedef enum iopcode{
@@ -15,7 +27,7 @@ typedef enum iopcode{
 } iopcode;
 
 
-//Will be used to make print easier(gia na glytwsoume ta polla if else...arkei na kanoyme swsto indexing)
+//Will be used to make print easier(gia na glytwsoume ta polla if else sthn print_quads...arkei na kanoyme swsto indexing)
 char *iopcode_to_string[] = {
     "assign", "add", "sub",
     "mul", "div", "mod",
@@ -48,9 +60,9 @@ typedef enum expr_t{
 typedef struct expr{
     expr_t type;
     symrec* sym;
-    struct expr * index;
+    struct expr* index;
     double numConst;
-    char * strConst;
+    char* strConst;
     unsigned char boolConst;
     unsigned label;
     unsigned isNot;
@@ -69,7 +81,7 @@ typedef struct quad{
     unsigned line;
 } quad;
 
-//from lectures
+//global vars from lectures
 unsigned total = 0;
 unsigned int currQuad = 0;
 quad* quads = (quad*) 0;
@@ -80,6 +92,95 @@ quad* quads = (quad*) 0;
 #define EXPAND_SIZE 1024
 #define CURR_SIZE   (total*sizeof(quad))
 #define NEW_SIZE    (EXPAND_SIZE*sizeof(quad) + CURR_SIZE)
+
+
+//ENDS OF DEFINITIONS
+
+//FUNCTIONS...
+
+//Function from lectures
+scopespace_t currscopespace(){
+    if(scopeSpaceCounter == 1)
+        return programvar;
+    else if(scopeSpaceCounter % 2 == 0)
+        return formalarg;
+    else
+        return functionlocal;
+}
+
+//Function from lectures
+unsigned currscopeoffset(){
+    switch(currscopespace()){
+        case programvar : return programVarOffset;
+        case functionlocal : return functionLocalOffset;
+        case formalarg : return formalArgOffset;
+        default : assert(0);
+    }
+}
+
+//Function from lectures
+void incurrscopeoffset(){
+    switch(currscopespace()){
+        case programvar : ++programVarOffset; break;
+        case functionlocal : ++functionLocalOffset; break;
+        case formalarg : ++formalArgOffset; break;
+        default : assert(0);
+    }
+}
+
+//Function from lectures
+void entersscopespace(){
+    ++scopeSpaceCounter;
+}
+
+//Function from lectures
+void exitscopespace(){
+    assert(scopeSpaceCounter > 1);
+    --scopeSpaceCounter;
+}
+
+
+
+
+int currscope(){
+    return scope;
+}
+
+//Function implement from lectures for temporary values
+char* newtempname(){
+    char* temp = (char*)malloc(MAX_TEMP_NAME*sizeof(char));
+    sprintf(temp,"_t%d",temp_values_counter);
+    temp_values_counter++;
+    return temp;
+}
+
+//Function implement from lectures for temporary values
+void resettemp(){
+    temp_values_counter = 0;
+}
+
+//Function implement from lectures for temporary values
+symrec* newtemp(){
+    char* new_temp_name = newtempname();
+    int currentscope = currscope();
+    symrec* rec = lookup_scope(new_temp_name,currentscope);
+    if(rec == NULL){
+        insert(new_temp_name, LOCALVAR, 0, currentscope);
+        rec = lookup_scope(new_temp_name,currentscope);
+        return rec;
+    }
+    return rec;
+}
+
+//to check if a var is temp or not by name
+int is_temp_val(char* name){
+    if(strlen(name) < 3)
+        return 0;
+    if(*name == '_' & *(name+1) == 't')
+        return 1;
+    return 0;
+}
+
 
 //to extend the dynamic quads array
 void extend_quads_array(){

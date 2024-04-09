@@ -3,7 +3,12 @@
 #include<string.h>
 #include<assert.h>
 
+
+int scope = 0;
+
 typedef enum Type{GLOBALVAR, LOCALVAR, FORMAL, USERFUNCTION, LIBFUNCTION} Type;
+
+typedef enum scopespace_t{programvar, functionlocal, formalarg} scopespace_t;
 
 //Will be used to make print easier
 char *type_to_string[] = {
@@ -20,6 +25,8 @@ typedef struct sym_table{
     int line;
     char* name;
     Type type;
+    scopespace_t space;
+    unsigned offset;
     struct sym_table* next;
     struct sym_table* next_scope;
 } symrec;
