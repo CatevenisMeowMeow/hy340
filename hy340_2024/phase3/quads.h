@@ -98,6 +98,7 @@ quad* quads = (quad*) 0;
 
 //FUNCTIONS...
 
+//FUNCTIONS FOR SCOPESPACE
 //Function from lectures
 scopespace_t currscopespace(){
     if(scopeSpaceCounter == 1)
@@ -139,13 +140,11 @@ void exitscopespace(){
     --scopeSpaceCounter;
 }
 
-
-
-
 int currscope(){
     return scope;
 }
 
+//FUNCTIONS FOR TEMP VALS
 //Function implement from lectures for temporary values
 char* newtempname(){
     char* temp = (char*)malloc(MAX_TEMP_NAME*sizeof(char));
@@ -181,7 +180,44 @@ int is_temp_val(char* name){
     return 0;
 }
 
+//FUNCTIONS FOR EXPRESSIONS
 
+//New expr with an expr_t
+expr* newexpr_type(expr_t type){
+    expr* ex = (expr*)malloc(sizeof(expr));
+    ex->type = type;
+    return ex;
+}
+
+
+//New numconst expr
+expr* newexpr_numConst(double num){
+    expr* ex = (expr*)malloc(sizeof(expr));
+    ex->numConst = num;
+    return ex;
+}
+
+//New strconst expr
+expr* newexpr_strConst(char* str){
+    assert(str);
+    expr* ex = (expr*)malloc(sizeof(expr));
+    ex->strConst = malloc(strlen(str)*sizeof(char) + 1);
+    strcpy(ex->strConst,str);
+    return ex;
+}
+
+//New boolconst expr
+expr* newexpr_boolConst(unsigned char c){
+    expr* ex = (expr*)malloc(sizeof(expr));
+    ex->boolConst = c; // 0 false and 1 true
+    return ex;
+}
+
+
+
+
+
+//FUNCTIONS FOR QUADS
 //to extend the dynamic quads array
 void extend_quads_array(){
     quad* new_quads = malloc(NEW_SIZE); 
@@ -200,14 +236,74 @@ void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsi
     if(currQuad == total){
         extend_quads_array();
     }
-    quad* quad = quads + currQuad;
+    quad* q = quads + currQuad;
     currQuad++;
-    quad->arg1 = arg1;
-    quad->arg2 = arg2;
-    quad->op = op;
-    quad->result = result;
-    quad->label = label;
-    quad->line = line;
+    q->arg1 = arg1;
+    q->arg2 = arg2;
+    q->op = op;
+    q->result = result;
+    q->label = label;
+    q->line = line;
     
+}
+
+
+
+
+void print_quads(){
+    int i;
+    printf("quad#   opcode      result      arg1        arg2        label\n");
+    printf("-------------------------------------------------------------\n");
+    for(i=0;i<currQuad;i++){
+        //quad#
+        printf("%d  ",i);
+
+        //opcode
+        printf("%s      ",iopcode_to_string[quads[i].op]);
+
+        //result(can only be symbol)
+        printf("%s      ",quads[i].result->sym->name);
+
+        //for arg1
+       if(quads[i].arg1->type == constnum_e){
+            printf("%f      ",quads[i].arg1->numConst);
+        }
+        else if(quads[i].arg1->type == conststring_e){
+            printf("%s      ",quads[i].arg1->strConst);
+       }
+        else if(quads[i].arg1->type == constbool_e){
+            if(quads[i].arg1->boolConst == 0)
+                printf("'false'      ");
+            else
+                 printf("'true'      ");
+        }
+        else{
+            printf("%s      ",quads[i].arg1->sym->name);
+        }
+
+        //for arg2
+       if(quads[i].arg2->type == constnum_e){
+            printf("%f      ",quads[i].arg2->numConst);
+        }
+        else if(quads[i].arg2->type == conststring_e){
+            printf("%s      ",quads[i].arg2->strConst);
+       }
+        else if(quads[i].arg2->type == constbool_e){
+            if(quads[i].arg2->boolConst == 0)
+                printf("'false'      ");
+            else
+                 printf("'true'      ");
+        }
+        else{
+            printf("%s      ",quads[i].arg2->sym->name);
+        }
+
+        //for label
+        printf("%d\n",quads[i].label);
+
+
+
+    }
+
 }
 
