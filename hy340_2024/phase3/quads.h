@@ -144,6 +144,10 @@ int currscope(){
     return scope;
 }
 
+
+
+
+
 //FUNCTIONS FOR TEMP VALS
 //Function implement from lectures for temporary values
 char* newtempname(){
@@ -180,6 +184,10 @@ int is_temp_val(char* name){
     return 0;
 }
 
+
+
+
+
 //FUNCTIONS FOR EXPRESSIONS
 
 //New expr with an expr_t
@@ -193,6 +201,7 @@ expr* newexpr_type(expr_t type){
 //New numconst expr
 expr* newexpr_numConst(double num){
     expr* ex = (expr*)malloc(sizeof(expr));
+    ex->type = constnum_e;
     ex->numConst = num;
     return ex;
 }
@@ -202,6 +211,7 @@ expr* newexpr_strConst(char* str){
     assert(str);
     expr* ex = (expr*)malloc(sizeof(expr));
     ex->strConst = malloc(strlen(str)*sizeof(char) + 1);
+    ex->type = conststring_e;
     strcpy(ex->strConst,str);
     return ex;
 }
@@ -210,6 +220,7 @@ expr* newexpr_strConst(char* str){
 expr* newexpr_boolConst(unsigned char c){
     expr* ex = (expr*)malloc(sizeof(expr));
     ex->boolConst = c; // 0 false and 1 true
+    ex->type = constbool_e;
     return ex;
 }
 
@@ -256,7 +267,7 @@ void print_quads(){
     printf("-------------------------------------------------------------\n");
     for(i=0;i<currQuad;i++){
         //quad#
-        printf("%d  ",i);
+        printf("%d         ",i);
 
         //opcode
         printf("%s      ",iopcode_to_string[quads[i].op]);
@@ -265,11 +276,12 @@ void print_quads(){
         printf("%s      ",quads[i].result->sym->name);
 
         //for arg1
+        //if it is a constnum, conststring or constbool just prints the value
        if(quads[i].arg1->type == constnum_e){
-            printf("%f      ",quads[i].arg1->numConst);
+            printf("'%f'      ",quads[i].arg1->numConst);
         }
         else if(quads[i].arg1->type == conststring_e){
-            printf("%s      ",quads[i].arg1->strConst);
+            printf("'%s'      ",quads[i].arg1->strConst);
        }
         else if(quads[i].arg1->type == constbool_e){
             if(quads[i].arg1->boolConst == 0)
@@ -277,16 +289,17 @@ void print_quads(){
             else
                  printf("'true'      ");
         }
+        //otherwise it prints the symbol name(ex. x)
         else{
             printf("%s      ",quads[i].arg1->sym->name);
         }
 
         //for arg2
        if(quads[i].arg2->type == constnum_e){
-            printf("%f      ",quads[i].arg2->numConst);
+            printf("'%f'      ",quads[i].arg2->numConst);
         }
         else if(quads[i].arg2->type == conststring_e){
-            printf("%s      ",quads[i].arg2->strConst);
+            printf("'%s'      ",quads[i].arg2->strConst);
        }
         else if(quads[i].arg2->type == constbool_e){
             if(quads[i].arg2->boolConst == 0)
