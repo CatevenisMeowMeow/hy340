@@ -28,6 +28,7 @@ int main(){
    emit(assign, result, arg1, arg2, 0, 0);
    emit(assign, result, arg1, arg2, 0, 0);
    emit(assign, result, arg1, arg2, 0, 0);
+   emit(jump,(expr*)0,(expr*)0,(expr*)0,26,6);
      print_quads();
 
      

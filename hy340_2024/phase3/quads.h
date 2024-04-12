@@ -68,7 +68,7 @@ typedef struct expr{
     unsigned isNot;
     struct expr* truelist;
     struct expr* falselist;
-    struct expr* next;
+    struct expr* next; //will be usefull for function parameters
 } expr;
 
 //from lectures
@@ -86,6 +86,9 @@ unsigned total = 0;
 unsigned int currQuad = 0;
 quad* quads = (quad*) 0;
 
+//global var for the elist for a function call or def
+expr* function_params_head = NULL;
+
 
 
 //definitions from lectures
@@ -97,6 +100,43 @@ quad* quads = (quad*) 0;
 //ENDS OF DEFINITIONS
 
 //FUNCTIONS...
+
+//FUNCTIONS FOR EXPRESSION LIST
+
+//function to add to the elist a new expr
+void add_to_expr_list(expr *e){
+    assert(e);
+    if(function_params_head == NULL){
+        function_params_head = e;
+        return;
+    }
+    expr* tmp = function_params_head;
+    expr* prev = NULL;
+    while(tmp!=NULL){
+        prev = tmp;
+        tmp = tmp->next;
+    }
+    prev->next = e;
+}
+
+//function to clear elist
+void clear_expr_list(){
+    if(function_params_head == NULL)
+        return;
+    expr* tmp = function_params_head;
+    tmp = tmp->next;
+    expr* prev = tmp;
+    while(tmp!=NULL){
+        prev = tmp;
+        tmp = tmp->next;
+        free(prev);
+    }
+    function_params_head = NULL;
+}
+
+
+
+
 
 //FUNCTIONS FOR SCOPESPACE
 //Function from lectures
@@ -144,9 +184,37 @@ int currscope(){
     return scope;
 }
 
+/*Vardis*/
+void updateQuadLabel(unsigned quadIndex, unsigned newLabel) {
+    assert(quadIndex < currQuad); // We check that the quad index is within the limits.
+    quads[quadIndex].label = newLabel; // We renew the label of the quads.
+}
+
+/*Vardis*/
+void validateUnaryMinus(expr * e){
+    if(e->type == constbool_e || e->type == conststring_e || e->type == nil_e || e->type == newtable_e || e->type == programfunc_e || e->type == libraryfunc_e || e->type == boolexpr_e){
+        perror("Type error: Unary minus operator is not applicable to this expression.");
+    }
+}
+
+/*Vardis*///Yparxei hdh h is_temp_val poy kanei akrivws to idio
+unsigned int istempname(char * s){
+    return *s == '_';
+}
+
+/*Vardis*/
+unsigned int istempexpr(expr * e){
+    return e->sym && (e->sym->type == LOCALVAR ||  e->sym->type == GLOBALVAR) && istempname(e->sym->name);
+}
 
 
 
+/*Vardis*/
+void extraSets(symrec * sym){
+    sym->space = currscopespace();
+    sym->offset = currscopeoffset();
+    incurrscopeoffset();
+}
 
 //FUNCTIONS FOR TEMP VALS
 //Function implement from lectures for temporary values
@@ -174,6 +242,18 @@ symrec* newtemp(){
     }
     return rec;
 }
+
+/*Vardis*/
+symrec * returnTempName(expr * expr1, expr * expr3){
+    if(expr1 != NULL && istempexpr(expr1)){
+		return expr1->sym;
+	}else if(expr3 != NULL && istempexpr(expr3)){
+		return expr3->sym;
+	}else{
+		return newtemp();
+	}
+}
+
 
 //to check if a var is temp or not by name
 int is_temp_val(char* name){
@@ -260,7 +340,7 @@ void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsi
 
 
 
-
+//Function to print quads array. Does not check for errors assuming quads are correctly inserted
 void print_quads(){
     int i;
     printf("quad#   opcode      result      arg1        arg2        label\n");
@@ -272,50 +352,58 @@ void print_quads(){
         //opcode
         printf("%s      ",iopcode_to_string[quads[i].op]);
 
-        //result(can only be symbol)
-        printf("%s      ",quads[i].result->sym->name);
+        //result
+        if(quads[i].result == (expr*)0)
+            printf("              ");
+        else
+            printf("%s      ",quads[i].result->sym->name);
 
         //for arg1
         //if it is a constnum, conststring or constbool just prints the value
-       if(quads[i].arg1->type == constnum_e){
-            printf("'%f'      ",quads[i].arg1->numConst);
-        }
-        else if(quads[i].arg1->type == conststring_e){
-            printf("'%s'      ",quads[i].arg1->strConst);
-       }
-        else if(quads[i].arg1->type == constbool_e){
-            if(quads[i].arg1->boolConst == 0)
-                printf("'false'      ");
-            else
-                 printf("'true'      ");
-        }
-        //otherwise it prints the symbol name(ex. x)
+        if(quads[i].arg1 == (expr*)0)
+            printf("           ");
         else{
-            printf("%s      ",quads[i].arg1->sym->name);
+            if(quads[i].arg1->type == constnum_e){
+                    printf("'%f'      ",quads[i].arg1->numConst);
+                }
+                else if(quads[i].arg1->type == conststring_e){
+                    printf("'%s'      ",quads[i].arg1->strConst);
+            }
+            else if(quads[i].arg1->type == constbool_e){
+                if(quads[i].arg1->boolConst == 0)
+                    printf("'false'      ");
+                else
+                    printf("'true'      ");
+            }
+                //otherwise it prints the symbol name(ex. x)
+            else{
+                printf("%s      ",quads[i].arg1->sym->name);
+            }
         }
 
         //for arg2
-       if(quads[i].arg2->type == constnum_e){
-            printf("'%f'      ",quads[i].arg2->numConst);
-        }
-        else if(quads[i].arg2->type == conststring_e){
-            printf("'%s'      ",quads[i].arg2->strConst);
-       }
-        else if(quads[i].arg2->type == constbool_e){
-            if(quads[i].arg2->boolConst == 0)
-                printf("'false'      ");
-            else
-                 printf("'true'      ");
-        }
-        else{
-            printf("%s      ",quads[i].arg2->sym->name);
-        }
 
+        if(quads[i].arg1 == (expr*)0)
+            printf("              ");
+        else{
+            if(quads[i].arg2->type == constnum_e){
+                printf("'%f'      ",quads[i].arg2->numConst);
+            }
+            else if(quads[i].arg2->type == conststring_e){
+                printf("'%s'      ",quads[i].arg2->strConst);
+            }
+            else if(quads[i].arg2->type == constbool_e){
+                if(quads[i].arg2->boolConst == 0)
+                    printf("'false'      ");
+                else
+                    printf("'true'      ");
+            }
+            else{
+                printf("%s      ",quads[i].arg2->sym->name);
+            }
+        }
         //for label
         printf("%d\n",quads[i].label);
-
-
-
     }
 
 }
