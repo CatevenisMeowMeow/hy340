@@ -2,9 +2,11 @@
 #include<stdlib.h>
 #include<string.h>
 #include<assert.h>
+#define MAX_SIZE 128
 
 
 int scope = 0;
+int loopcounter = 0;
 
 typedef enum Type{GLOBALVAR, LOCALVAR, FORMAL, USERFUNCTION, LIBFUNCTION} Type;
 
@@ -31,6 +33,36 @@ typedef struct sym_table{
     struct sym_table* next_scope;
 } symrec;
 
+
+
+//will be usefull
+typedef struct stack{
+    int top;
+    int items[MAX_SIZE];
+} Stack;
+
+
+//STACK FUNCTIONS
+//Initializer
+void initializeStack(Stack *stack);
+
+// Function to check if the stack is empty
+int isEmpty(Stack *stack);
+
+// Function to check if the stack is full
+int isFull(Stack *stack);
+
+// Function to push an item onto the stack
+void push(Stack *stack, int item);
+
+// Function to pop an item from the stack
+int pop(Stack *stack);
+
+// Function to return the top element of the stack without popping it
+int top(Stack *stack);
+ 
+//SYMBOL TABLE FUNCTIONS
+
 symrec *sym_table_head = NULL;
 
 void print_symbol_table();
@@ -53,7 +85,52 @@ int is_library_function(char* name);
 
 
 
+//STACK FUNCTIONS
+void initializeStack(Stack *stack) {
+    stack->top = -1;
+}
 
+
+int isEmpty(Stack *stack) {
+    return (stack->top == -1);
+}
+
+
+int isFull(Stack *stack) {
+    return (stack->top == MAX_SIZE - 1);
+}
+
+
+void push(Stack *stack, int item) {
+    if (isFull(stack)) {
+        fprintf(stderr,"Stack overflow! Cannot push element %d\n", item);
+        return;
+    }
+    stack->items[++stack->top] = item;
+}
+
+
+int pop(Stack *stack) {
+    if (isEmpty(stack)) {
+        fprintf(stderr,"Stack underflow! Cannot pop from empty stack\n");
+        exit(1);
+    }
+    return stack->items[stack->top--];
+}
+
+int top(Stack *stack) {
+    if (isEmpty(stack)) {
+        fprintf(stderr,"Stack is empty\n");
+        exit(1);
+    }
+    return stack->items[stack->top];
+}
+
+
+
+
+
+//SYMBOL TABLE FUNCTIONS
 void insert(char* name, Type type, int line, int scope){
     symrec* tmp;
     //create node

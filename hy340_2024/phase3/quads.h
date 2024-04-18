@@ -57,6 +57,12 @@ typedef enum expr_t{
 } expr_t;
 
 //from lectures
+typedef struct stmt_t {
+    int breakList, contList;
+} stmt_t;
+
+
+//from lectures
 typedef struct expr{
     expr_t type;
     symrec* sym;
@@ -66,10 +72,13 @@ typedef struct expr{
     unsigned char boolConst;
     unsigned label;
     unsigned isNot;
-    struct expr* truelist;
-    struct expr* falselist;
+    struct expr* truelist; //gia thn meriki apotimisi
+    struct expr* falselist; //gia thn meriki apotimisi
     struct expr* next; //will be usefull for function parameters
 } expr;
+
+
+
 
 //from lectures
 typedef struct quad{
@@ -87,7 +96,7 @@ unsigned int currQuad = 0;
 quad* quads = (quad*) 0;
 
 //global var for the elist for a function call or def
-expr* function_params_head = NULL;
+//expr* elist = NULL;
 
 
 
@@ -99,18 +108,130 @@ expr* function_params_head = NULL;
 
 //ENDS OF DEFINITIONS
 
+//FUNCTIONS DEFINITIONS(HELPS TO REMOVE WARNINGS)
+
+// FUNCTIONS FOR STMTS
+void make_stmt(stmt_t* s);
+int newlist(int i);
+int mergelist(int l1, int l2);
+void patchlist(int list, int label);
+
+// FUNCTIONS FOR EXPRESSIONS
+expr* emit_iftableitem(expr* e);
+expr* make_call(expr* lv, expr* reversed_elist, int line);
+void add_to_expr_list(expr* elist,expr *e);
+void clear_expr_list(expr* elist);
+void patchlabel(unsigned quadNo, unsigned label);
+unsigned nextquad();
+scopespace_t currscopespace();
+unsigned currscopeoffset();
+void incurrscopeoffset();
+void entersscopespace();
+void exitscopespace();
+int currscope();
+void updateQuadLabel(unsigned quadIndex, unsigned newLabel);
+void validateUnaryMinus(expr * e);
+unsigned int istempname(char * s);
+unsigned int istempexpr(expr * e);
+void extraSets(symrec * sym);
+char* newtempname();
+void resettemp();
+symrec* newtemp();
+symrec * returnTempName(expr * expr1, expr * expr3);
+int is_temp_val(char* name);
+
+expr* newexpr_type(expr_t type);
+expr* newexpr_numConst(double num);
+expr* newexpr_strConst(char* str);
+expr* newexpr_boolConst(unsigned int c);
+
+// FUNCTIONS FOR QUADS
+void extend_quads_array();
+void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsigned line);
+void emit_function_params(expr* elist);
+int type_matching(expr* arg1, expr* arg2);
+void print_quads();
+
+//END OF FUNCTION DEFINITIONS
+
+
+
+
 //FUNCTIONS...
 
-//FUNCTIONS FOR EXPRESSION LIST
+//FUNCTIONS FOR STMTS
 
-//function to add to the elist a new expr
-void add_to_expr_list(expr *e){
+//from lectures
+void make_stmt (stmt_t* s)
+{ s->breakList = s->contList = 0; }
+
+//from lectures
+int newlist (int i)
+{ quads[i].label = 0; return i; }
+
+//from lectures
+int mergelist (int l1, int l2) {
+    if (!l1)
+        return l2;
+    else
+        if (!l2)
+            return l1;
+    else {
+        int i = l1;
+        while (quads[i].label)
+            i = quads[i].label;
+        quads[i].label = l2;
+    return l1;
+    }
+}
+
+//from lectures
+void patchlist (int list, int label) {
+    while (list) {
+        int next = quads[list].label;
+        quads[list].label = label;
+        list = next;
+    }
+}
+
+
+//FUNCTIONS FOR EXPRESSIONS
+
+//from lectures
+expr* emit_iftableitem(expr* e){
+    if(e->type != tableitem_e)
+        return e;
+    else{
+        expr* result = newexpr_type(var_e);
+        result->sym = newtemp();
+        emit(tablegetelem, result,e, e->index, currQuad, e->sym->line);
+        return result;
+    }
+}
+
+//from lectures(added line because it is required for emit and quads)
+expr* make_call(expr* lv, expr* reversed_elist, int line) {
+    expr* func = emit_iftableitem(lv);
+    while (reversed_elist) {
+        emit(param, NULL, reversed_elist, NULL,currQuad,line);
+        reversed_elist = reversed_elist->next;
+    }
+    emit(call, func,NULL,NULL,0,line);
+    expr* result = newexpr_type(var_e);
+    result->sym = newtemp();
+    emit(getretval,result,NULL,NULL,currQuad,line);
+    return result;
+}
+
+
+//function to add to the elist a new expr(usefull for calls or for stmts)
+void add_to_expr_list(expr* elist,expr *e){
     assert(e);
-    if(function_params_head == NULL){
-        function_params_head = e;
+    if(elist == NULL){
+        elist = e;
         return;
     }
-    expr* tmp = function_params_head;
+    expr* tmp = elist;
     expr* prev = NULL;
     while(tmp!=NULL){
         prev = tmp;
@@ -119,23 +240,35 @@ void add_to_expr_list(expr *e){
     prev->next = e;
 }
 
-//function to clear elist
-void clear_expr_list(){
-    if(function_params_head == NULL)
+//function to clear elist(usefull for calls or for stmts)
+//DO NOT USE IT BEFORE YOU PRINT QUADS. IT WILL THROW SEGMENTATION
+void clear_expr_list(expr* elist){
+    if(elist == NULL)
         return;
-    expr* tmp = function_params_head;
+    expr* tmp = elist;
     tmp = tmp->next;
-    expr* prev = tmp;
+    expr* prev = NULL;
     while(tmp!=NULL){
         prev = tmp;
         tmp = tmp->next;
         free(prev);
     }
-    function_params_head = NULL;
+    elist = NULL;
 }
 
 
 
+
+//function from lectures
+void patchlabel(unsigned quadNo, unsigned label){
+    assert(quadNo < currQuad && !quads[quadNo].label);
+    quads[quadNo].label = label;
+}
+
+//function from lectures
+unsigned nextquad(){
+    return currQuad;
+}
 
 
 //FUNCTIONS FOR SCOPESPACE
@@ -190,6 +323,14 @@ void updateQuadLabel(unsigned quadIndex, unsigned newLabel) {
     quads[quadIndex].label = newLabel; // We renew the label of the quads.
 }
 
+expr_t returnType(expr * temp, expr * a, expr * b){
+
+    if(a->type == constnum_e && b->type == constnum_e){
+        return constnum_e;
+    }
+    return temp->type;
+}
+
 /*Vardis*/
 void validateUnaryMinus(expr * e){
     if(e->type == constbool_e || e->type == conststring_e || e->type == nil_e || e->type == newtable_e || e->type == programfunc_e || e->type == libraryfunc_e || e->type == boolexpr_e){
@@ -197,7 +338,7 @@ void validateUnaryMinus(expr * e){
     }
 }
 
-/*Vardis*///Yparxei hdh h is_temp_val poy kanei akrivws to idio
+/*Vardis*///
 unsigned int istempname(char * s){
     return *s == '_';
 }
@@ -217,6 +358,7 @@ void extraSets(symrec * sym){
 }
 
 //FUNCTIONS FOR TEMP VALS
+
 //Function implement from lectures for temporary values
 char* newtempname(){
     char* temp = (char*)malloc(MAX_TEMP_NAME*sizeof(char));
@@ -280,8 +422,7 @@ expr* newexpr_type(expr_t type){
 
 //New numconst expr
 expr* newexpr_numConst(double num){
-    expr* ex = (expr*)malloc(sizeof(expr));
-    ex->type = constnum_e;
+    expr* ex = newexpr_type(constnum_e);
     ex->numConst = num;
     return ex;
 }
@@ -289,18 +430,16 @@ expr* newexpr_numConst(double num){
 //New strconst expr
 expr* newexpr_strConst(char* str){
     assert(str);
-    expr* ex = (expr*)malloc(sizeof(expr));
+    expr* ex = newexpr_type(conststring_e);
     ex->strConst = malloc(strlen(str)*sizeof(char) + 1);
-    ex->type = conststring_e;
     strcpy(ex->strConst,str);
     return ex;
 }
 
 //New boolconst expr
-expr* newexpr_boolConst(unsigned char c){
-    expr* ex = (expr*)malloc(sizeof(expr));
-    ex->boolConst = c; // 0 false and 1 true
-    ex->type = constbool_e;
+expr* newexpr_boolConst(unsigned int c){
+    expr* ex = newexpr_type(constbool_e);
+    ex->boolConst = !!c;
     return ex;
 }
 
@@ -309,6 +448,7 @@ expr* newexpr_boolConst(unsigned char c){
 
 
 //FUNCTIONS FOR QUADS
+
 //to extend the dynamic quads array
 void extend_quads_array(){
     quad* new_quads = malloc(NEW_SIZE); 
@@ -316,13 +456,13 @@ void extend_quads_array(){
         quads = new_quads;
         return;
     }
-    memcpy(new_quads, quads, CURR_SIZE);//found that memcpy can do the job to copy all the array to the new_quads
+    memcpy(new_quads, quads, CURR_SIZE);
     free(quads);
     quads = new_quads;
     total = total + EXPAND_SIZE;
 }
 
-
+//function to add a quad to quads array
 void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsigned line){
     if(currQuad == total){
         extend_quads_array();
@@ -336,6 +476,29 @@ void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsi
     q->label = label;
     q->line = line;
     
+}
+
+//function to make function def using elist
+//Should make the elist first then call this function and then clear_expr_elist
+//Should put the correct type to make multiple quads with this type
+void emit_function_params(expr* elist){
+    expr* e = elist;
+    assert(e);
+    while(e != NULL){
+        assert(e->sym != NULL);
+        emit(param,NULL,e,NULL,0,e->sym->line);
+        e = e->next;
+    }
+
+}
+
+//function that compares the types between two expressions. Returns 1 at success and 0 at fail.
+int type_matching(expr* arg1, expr* arg2){
+    assert(arg1);
+    assert(arg2);
+    if(arg1->type == arg2->type)
+        return 1;
+    return 0;
 }
 
 
@@ -354,20 +517,20 @@ void print_quads(){
 
         //result
         if(quads[i].result == (expr*)0)
-            printf("              ");
+            printf("             ");
         else
             printf("%s      ",quads[i].result->sym->name);
 
         //for arg1
-        //if it is a constnum, conststring or constbool just prints the value
+        //if it is a constnum, conststring or constbool just prints the value. If null just prints whitespace
         if(quads[i].arg1 == (expr*)0)
-            printf("           ");
+            printf("          ");
         else{
             if(quads[i].arg1->type == constnum_e){
-                    printf("'%f'      ",quads[i].arg1->numConst);
+                    printf("'%.02f'    ",quads[i].arg1->numConst);
                 }
                 else if(quads[i].arg1->type == conststring_e){
-                    printf("'%s'      ",quads[i].arg1->strConst);
+                    printf("'%s'    ",quads[i].arg1->strConst);
             }
             else if(quads[i].arg1->type == constbool_e){
                 if(quads[i].arg1->boolConst == 0)
@@ -375,22 +538,23 @@ void print_quads(){
                 else
                     printf("'true'      ");
             }
-                //otherwise it prints the symbol name(ex. x)
+                //otherwise it prints the symbol name(ident)
             else{
-                printf("%s      ",quads[i].arg1->sym->name);
+                assert(quads[i].arg1->sym);
+               printf("%s      ",quads[i].arg1->sym->name);
             }
         }
 
         //for arg2
-
-        if(quads[i].arg1 == (expr*)0)
-            printf("              ");
+        //Same with arg1
+        if(quads[i].arg2 == (expr*)0)
+            printf("             ");
         else{
             if(quads[i].arg2->type == constnum_e){
-                printf("'%f'      ",quads[i].arg2->numConst);
+                printf("'%.02f'    ",quads[i].arg2->numConst);
             }
             else if(quads[i].arg2->type == conststring_e){
-                printf("'%s'      ",quads[i].arg2->strConst);
+                printf("'%s'    ",quads[i].arg2->strConst);
             }
             else if(quads[i].arg2->type == constbool_e){
                 if(quads[i].arg2->boolConst == 0)
@@ -399,6 +563,7 @@ void print_quads(){
                     printf("'true'      ");
             }
             else{
+                 assert(quads[i].arg2->sym);
                 printf("%s      ",quads[i].arg2->sym->name);
             }
         }

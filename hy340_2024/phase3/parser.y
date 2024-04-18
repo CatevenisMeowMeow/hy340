@@ -26,10 +26,30 @@
         int int_val;
         double double_val;
         char *str_val;
-        struct sym_table *node;
+       // struct sym_table *node;
+        struct expr *node;
 }
 
 %type <node> lvalue
+%type <node> expr
+%type <node> term
+%type <node> assignexpr
+%type <node> primary
+%type <node> const
+%type <node> funcdef
+%type <node> objectdef
+%type <node> member
+%type <node> methodcall
+%type <node> elist
+%type <node> callsufix
+%type <node> normcall
+%type <node> call
+%type <node> indexedelemlist
+%type <node> indexedelem
+%type <node> indexed
+%type <node> ifstmt
+%type <node> whilestmt
+%type <node> forstmt
 
 
 %token IF 
@@ -97,7 +117,6 @@
 %left LEFT_SQUARE RIGHT_SQUARE
 %right LEFT_PARENTHESIS RIGHT_PARENTHESIS
 %right UMINUS                           // -lvalue error.
-%right EXPRESSION_READ_NEXT_CHARACTER   // opeartions.
 %left ELSE                        // Prioritize reduction ELSE.
 
 
@@ -131,28 +150,25 @@ stmts: stmt stmts
         |
         ;
 
-expr:   assignexpr
-        | expr op expr %prec EXPRESSION_READ_NEXT_CHARACTER
+expr:   assignexpr{$$ = $1;}
+        | expr PLUS expr
+        | expr MINUS expr
+        | expr MULTIPLICATION expr
+        | expr DIVISION expr
+        | expr MODULO expr 
+        | expr GREATER expr
+        | expr GREATER_EQUAL expr 
+        | expr LESS expr
+        | expr LESS_EQUAL expr
+        | expr EQUAL expr
+        | expr NOT_EQUAL expr 
+        | expr AND expr
+        | expr OR expr
         | term
         ;
 
-op: PLUS 
-    | MINUS 
-    | MULTIPLICATION
-    | DIVISION 
-    | MODULO 
-    | GREATER 
-    | GREATER_EQUAL 
-    | LESS 
-    | LESS_EQUAL 
-    | EQUAL 
-    | NOT_EQUAL 
-    | AND 
-    | OR
-    ;
-
-term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS
-        | MINUS expr %prec UMINUS  
+term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS{$$ = $2;}
+        | MINUS expr 
         | NOT expr
         | PLUS_PLUS lvalue {if($2 != NULL && ($2->type == USERFUNCTION || $2->type == LIBFUNCTION)) yyerror("Variable is function");}
         | MINUS_MINUS lvalue {if($2 != NULL && ($2->type == USERFUNCTION || $2->type == LIBFUNCTION)) yyerror("Variable is function");}
