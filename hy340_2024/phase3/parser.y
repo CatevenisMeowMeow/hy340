@@ -13,9 +13,11 @@
         extern FILE* yyin;
         extern FILE* yyout;
 
-       
+
+        Stack *scopeoffsetStack;
         int anonymous_function_counter = 0;
         char buf[32];
+        char id_str[64];
         symrec* tmp = NULL;
         
 %}
@@ -25,9 +27,16 @@
 %union{
         int int_val;
         double double_val;
+        unsigned unsigned_val;
         char *str_val;
-       // struct sym_table *node;
+        struct sym_table *sym_node;
         struct expr *node;
+
+        struct call{
+                struct expr* elist;
+                unsigned char method;
+                char* name;
+        } call_node;
 }
 
 %type <node> lvalue
@@ -36,20 +45,26 @@
 %type <node> assignexpr
 %type <node> primary
 %type <node> const
-%type <node> funcdef
-%type <node> objectdef
 %type <node> member
-%type <node> methodcall
 %type <node> elist
-%type <node> callsufix
-%type <node> normcall
 %type <node> call
+%type <node> expressionlist
 %type <node> indexedelemlist
 %type <node> indexedelem
 %type <node> indexed
 %type <node> ifstmt
 %type <node> whilestmt
 %type <node> forstmt
+%type <node> tablemake
+
+%type <str_val> funcname
+%type <unsigned_val> funcbody
+%type <sym_node> funcprefix
+%type <sym_node> funcdef
+
+%type <call_node> callsufix
+%type <call_node> methodcall
+%type <call_node> normcall
 
 
 %token IF 
@@ -129,10 +144,6 @@
 program:  stmts 
             ;
 
-
-
-
-
 stmt:   expr SEMICOLON
         | ifstmt
         | whilestmt
@@ -143,7 +154,6 @@ stmt:   expr SEMICOLON
         | block
         | funcdef
         | SEMICOLON 
-      //  | ignore
         ;
 
 stmts: stmt stmts
@@ -151,63 +161,147 @@ stmts: stmt stmts
         ;
 
 expr:   assignexpr{$$ = $1;}
-        | expr PLUS expr
-        | expr MINUS expr
-        | expr MULTIPLICATION expr
-        | expr DIVISION expr
-        | expr MODULO expr 
-        | expr GREATER expr
-        | expr GREATER_EQUAL expr 
-        | expr LESS expr
-        | expr LESS_EQUAL expr
-        | expr EQUAL expr
-        | expr NOT_EQUAL expr 
-        | expr AND expr
-        | expr OR expr
-        | term
+        | expr PLUS expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");}  {$$ = newexpr_type(arithexpr_e); $$->sym = returnTempName($1,$3); emit(add,$$,$1,$3,nextquad(),yylineno); } }
+        | expr MINUS expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");} {$$ = newexpr_type(arithexpr_e); $$->sym = returnTempName($1,$3); emit(sub,$$,$1,$3,nextquad(),yylineno); } }
+        | expr MULTIPLICATION expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");}  {$$ = newexpr_type(arithexpr_e); $$->sym = returnTempName($1,$3); emit(mul,$$,$1,$3,nextquad(),yylineno); } }
+        | expr DIVISION expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");}  {$$ = newexpr_type(arithexpr_e); $$->sym = returnTempName($1,$3); emit(divide,$$,$1,$3,nextquad(),yylineno); } }
+        | expr MODULO expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");}  {$$ = newexpr_type(arithexpr_e); $$->sym = returnTempName($1,$3); emit(mod,$$,$1,$3,nextquad(),yylineno); } }
+        | expr GREATER expr { $$ = newexpr_type(boolexpr_e); $$->sym = newtemp(); emit(if_greater,$$,$1,$3,nextquad()+3,yylineno); emit(assign,newexpr_boolConst(0),$$,NULL,nextquad(),yylineno); emit(jump,NULL,NULL,NULL,nextquad()+2,yylineno); emit(assign,newexpr_boolConst(1),NULL,$$,nextquad(),yylineno);}
+        | expr GREATER_EQUAL expr { $$ = newexpr_type(boolexpr_e); $$->sym = newtemp(); emit(if_greatereq,$$,$1,$3,nextquad()+3,yylineno); emit(assign,newexpr_boolConst(0),NULL,$$,nextquad(),yylineno); emit(jump,NULL,NULL,NULL,nextquad()+2,yylineno); emit(assign,newexpr_boolConst(1),NULL,$$,nextquad(),yylineno);}
+        | expr LESS expr { $$ = newexpr_type(boolexpr_e); $$->sym = newtemp(); emit(if_less,$$,$1,$3,nextquad()+3,yylineno); emit(assign,newexpr_boolConst(0),$$,NULL,nextquad(),yylineno); emit(jump,NULL,NULL,NULL,nextquad()+2,yylineno); emit(assign,newexpr_boolConst(1),$$,NULL,nextquad(),yylineno);}
+        | expr LESS_EQUAL expr { $$ = newexpr_type(boolexpr_e); $$->sym = newtemp(); emit(if_lesseq,$$,$1,$3,nextquad()+3,yylineno); emit(assign,newexpr_boolConst(0),$$,NULL,nextquad(),yylineno); emit(jump,NULL,NULL,NULL,nextquad()+2,yylineno); emit(assign,newexpr_boolConst(1),$$,NULL,nextquad(),yylineno);}
+        | expr EQUAL expr { $$ = newexpr_type(boolexpr_e); $$->sym = newtemp(); emit(if_eq,$$,$1,$3,nextquad()+3,yylineno); emit(assign,newexpr_boolConst(0),$$,NULL,nextquad(),yylineno); emit(jump,NULL,NULL,NULL,nextquad()+2,yylineno); emit(assign,newexpr_boolConst(1),$$,NULL,nextquad(),yylineno);}
+        | expr NOT_EQUAL expr { $$ = newexpr_type(boolexpr_e); $$->sym = newtemp(); emit(if_noteq,$$,$1,$3,nextquad()+3,yylineno); emit(assign,newexpr_boolConst(0),$$,NULL,nextquad(),yylineno); emit(jump,NULL,NULL,NULL,nextquad()+2,yylineno); emit(assign,newexpr_boolConst(1),$$,NULL,nextquad(),yylineno);}
+        | expr AND expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");}  {$$ = newexpr_type(boolexpr_e); $$->sym = returnTempName($1,$3); emit(and,$$,$1,$3,nextquad(),yylineno); } }
+        | expr OR expr {if(!type_matching($1,$3)){ yyerror("Wrong type matching");}  {$$ = newexpr_type(boolexpr_e); $$->sym = returnTempName($1,$3); emit(or,$$,$1,$3,nextquad(),yylineno); } }
+        | term {$$ = $1;}
         ;
 
 term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS{$$ = $2;}
-        | MINUS expr 
-        | NOT expr
-        | PLUS_PLUS lvalue {if($2 != NULL && ($2->type == USERFUNCTION || $2->type == LIBFUNCTION)) yyerror("Variable is function");}
-        | MINUS_MINUS lvalue {if($2 != NULL && ($2->type == USERFUNCTION || $2->type == LIBFUNCTION)) yyerror("Variable is function");}
-        | lvalue PLUS_PLUS {if($1 != NULL && ($1->type == USERFUNCTION || $1->type == LIBFUNCTION)) yyerror("Variable is function");}
-        | lvalue MINUS_MINUS {if($1 != NULL && ($1->type == USERFUNCTION || $1->type == LIBFUNCTION)) yyerror("Variable is function");}
-        | primary
+        | MINUS expr {check_arith($2,"unary minus"); $$ = newexpr_type(arithexpr_e); $$->sym = newtemp();  emit(uminus,$$,$2,NULL,nextquad(),yylineno);}
+        | NOT expr {$$ = newexpr_type(boolexpr_e); $$->sym = newtemp();  emit(not,$$,$2,NULL,nextquad(),yylineno);}
+        | PLUS_PLUS lvalue {  check_arith($2,"++lvalue");  
+                                if($2->type == tableitem_e){
+                                        $$ = emit_iftableitem($2);
+                                        emit(add, $$, $$, newexpr_numConst(1), nextquad(), yylineno);
+                                        emit(tablesetelem, $$, $2, $2->index, nextquad(), yylineno);
+                                }
+                                else{
+                                        emit(add, $2, $2, newexpr_numConst(1), nextquad(), yylineno);
+                                        $$ = newexpr_type(arithexpr_e);
+                                        $$->sym = newtemp();
+                                        emit(assign, $$, $2, NULL, nextquad(), yylineno);       
+                                }   
+                        }
+        | MINUS_MINUS lvalue {
+                                check_arith($2,"--lvalue");  
+                                if($2->type == tableitem_e){
+                                        $$ = emit_iftableitem($2);
+                                        emit(sub, $$, $$, newexpr_numConst(1), nextquad(), yylineno);
+                                        emit(tablesetelem, $$, $2, $2->index, nextquad(), yylineno);
+                                }
+                                else{
+                                        emit(sub, $2, $2, newexpr_numConst(1), nextquad(), yylineno);
+                                        $$ = newexpr_type(arithexpr_e);
+                                        $$->sym = newtemp();
+                                        emit(assign, $$, $2, NULL, nextquad(), yylineno);       
+                                } 
+
+                        }
+        | lvalue PLUS_PLUS {    check_arith($1,"lvalue++"); 
+                                $$ = newexpr_type(var_e); 
+                                $$->sym = newtemp();  
+                                if($1->type == tableitem_e){
+                                        expr* val = emit_iftableitem($1);
+                                        emit(assign, $$, val, NULL, nextquad(), yylineno);
+                                        emit(add, val, val, newexpr_numConst(1), nextquad(), yylineno);
+                                        emit(tablesetelem, val, $1, $1->index, nextquad(), yylineno);
+                                }
+                                else{
+                                        emit(assign, $$, $1, NULL, nextquad(), yylineno);
+                                        emit(add, $1, $1, newexpr_numConst(1), nextquad(), yylineno);
+                                }   
+                        }
+        | lvalue MINUS_MINUS {
+                                check_arith($1,"lvalue--"); 
+                                $$ = newexpr_type(var_e); 
+                                $$->sym = newtemp();  
+                                if($1->type == tableitem_e){
+                                        expr* val = emit_iftableitem($1);
+                                        emit(assign, $$, val, NULL, nextquad(), yylineno);
+                                        emit(sub, val, val, newexpr_numConst(1), nextquad(), yylineno);
+                                        emit(tablesetelem, val, $1, $1->index, nextquad(), yylineno);
+                                }
+                                else{
+                                        emit(assign, $$, $1, NULL, nextquad(), yylineno);
+                                        emit(sub, $1, $1, newexpr_numConst(1), nextquad(), yylineno);
+                                } 
+
+                        }
+        | primary {$$ = $1;}
         ;
 
-assignexpr: lvalue{if($1 != NULL && ($1->type == USERFUNCTION || $1->type == LIBFUNCTION))
+assignexpr: lvalue{     
+                        if($1->sym != NULL && ($1->sym->type == USERFUNCTION || $1->sym->type == LIBFUNCTION))
                                         yyerror("Variable is defined as function");
-                                } ASSIGN expr 
+                        if(lookup_scope(yylval.str_val, scope) == NULL){
+                                if(scope == 0)
+                                        insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                else
+                                        insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                        }
+                      //  tmp = lookup_scope(yylval.str_val, scope);
+                      //  $1 = lvalue_expr(tmp);
+                     //   extraSets($1->sym);
+                } 
+                ASSIGN expr{ 
+                                if($lvalue->type == tableitem_e){
+                                        emit(tablesetelem,$expr,$lvalue,$lvalue->index,nextquad(),yylineno);
+                                        $$ = emit_iftableitem($lvalue);
+                                        $$->type = assignexpr_e;
+                                }
+                                else{
+                                        emit(assign,$lvalue,$expr,NULL,nextquad(),yylineno);
+                                        $$ = newexpr_type(assignexpr_e);
+                                        $$->sym = newtemp();
+                                        emit(assign,$$,$lvalue,NULL,nextquad(),yylineno);
+                                }
+                }
             ;
 
-primary:    lvalue {}
-            | call
-            | objectdef
-            | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS
-            | const
+primary:    lvalue {$$ = emit_iftableitem($1);}
+            | call {$$ = $1;}
+           // | objectdef {$$ = $1;}
+            | tablemake {$$ = $1;} 
+            | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS {
+                                                                $$ = newexpr_type(programfunc_e);
+                                                                $$->sym = $2;
+                                                }
+            | const {$$ = $1;}
             ;
 
 lvalue: ID      {       
                         tmp = lookup_scope(yylval.str_val, 0);
                         if(tmp != NULL){
-                                
-                                $$ = tmp;
+                                $$ = lvalue_expr(tmp);
                         }
                         else if((tmp = lookup_scope(yylval.str_val,scope)) != NULL && tmp->active == 1){
-                                $$ = tmp;
+                                $$ = lvalue_expr(tmp);
                         }
                         else{
                                 if(scope == 0){
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                         tmp = lookup_scope(yylval.str_val,scope);
-                                        $$ = tmp;
+                                        tmp->space = currscopespace();
+                                        tmp->offset = currscopeoffset();
+                                        $$ = lvalue_expr(tmp);
                                 }
                                 else{
                                         insert(yylval.str_val, LOCALVAR, yylineno, scope);
                                         tmp = lookup_scope(yylval.str_val,scope);
-                                        $$ = tmp;
+                                        tmp->space = currscopespace();
+                                        tmp->offset = currscopeoffset();
+                                        $$ = lvalue_expr(tmp);
                                 }
                         }
                         
@@ -219,31 +313,37 @@ lvalue: ID      {
                                                 if(scope == 0){
                                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                                         tmp = lookup_scope(yylval.str_val,scope);
-                                                        $$ = tmp;
+                                                        tmp->space = currscopespace();
+                                                        tmp->offset = currscopeoffset();
+                                                        incurrscopeoffset();
+                                                        $$ = lvalue_expr(tmp);
                                                 }
                                                 else{
                                                         insert(yylval.str_val, LOCALVAR, yylineno, scope);
                                                         tmp = lookup_scope(yylval.str_val,scope);
-                                                        $$ = tmp;
+                                                        tmp->space = currscopespace();
+                                                        tmp->offset = currscopeoffset();
+                                                        incurrscopeoffset();
+                                                        $$ = lvalue_expr(tmp);
                                                 }
                                         }
                                         else if(tmp->type == LIBFUNCTION){
                                                         yyerror("Trying to shadow libfunction");
-                                                        $$ = tmp;
+                                                        $$ = lvalue_expr(tmp);
                                         }
                                         else{
                                                 if(tmp->active == 1)
-                                                        $$ = tmp;
+                                                        $$ = lvalue_expr(tmp);
                                                 else{
                                                         if(scope == 0){
                                                                 insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                                                 tmp = lookup_scope(yylval.str_val,scope);
-                                                                $$ = tmp;
+                                                                $$ = lvalue_expr(tmp);
                                                         }
                                                         else{
                                                                 insert(yylval.str_val, LOCALVAR, yylineno, scope);
                                                                 tmp = lookup_scope(yylval.str_val,scope);
-                                                                $$ = tmp;
+                                                                $$ = lvalue_expr(tmp);
                                                         }
                                                 }
                                         }
@@ -252,66 +352,142 @@ lvalue: ID      {
                                 tmp = lookup_scope(yylval.str_val,0);
                                 if(tmp == NULL)
                                         yyerror("Global variable not found");
-                                $$ = tmp;
-
+                                $$ = lvalue_expr(tmp);
                                 }
-        | member        {}                
+        | member   {$$ = $1;}                
         ;
 
-member: lvalue DOT ID                   
-        | lvalue LEFT_SQUARE expr RIGHT_SQUARE    
+member: lvalue DOT ID {$$ = member_item($1,yylval.str_val);}                  
+        | lvalue LEFT_SQUARE expr RIGHT_SQUARE {$1 = emit_iftableitem($1);
+                                                $$ = newexpr_type(tableitem_e);
+                                                $$->sym = $1->sym;
+                                                $$->index = $3;
+                                        }  
         | call DOT ID                   
         | call LEFT_SQUARE expr RIGHT_SQUARE      
         ;
 
-call:   call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
-        | lvalue callsufix
-        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
+call:   call LEFT_PARENTHESIS elist RIGHT_PARENTHESIS {$$ = make_call($1,$elist,yylineno);}
+        | lvalue callsufix {
+                                $lvalue = emit_iftableitem($lvalue);
+                                if($callsufix.method){
+                                        expr* tmp_ex = $callsufix.elist;
+                                        while(tmp_ex->next != NULL) tmp_ex = tmp_ex->next; //get to the last
+                                        tmp_ex->next = $lvalue;
+                                        $lvalue = emit_iftableitem(member_item($lvalue,$callsufix.name));
+                                }
+                                $call = make_call($lvalue,$callsufix.elist,yylineno);
+
+        }
+        | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS LEFT_PARENTHESIS elist RIGHT_PARENTHESIS { expr* ex = newexpr_type(programfunc_e);
+                                                                                                ex->sym = $funcdef;
+                                                                                                $call = make_call(ex,$elist,yylineno);
+                                                                                        }
         ;
 
-callsufix:  normcall
-            | methodcall
+callsufix:  normcall {$callsufix = $normcall;}
+            | methodcall {$callsufix = $methodcall;}
             ;
 
-normcall:   LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
+normcall:   LEFT_PARENTHESIS elist RIGHT_PARENTHESIS {
+                                                        $normcall.elist = $elist;
+                                                        $normcall.method = 0;
+                                                        $normcall.name = NULL;
+                                                }
             ;
 
-methodcall: DOUBLE_DOT ID LEFT_PARENTHESIS elist RIGHT_PARENTHESIS
+methodcall: DOUBLE_DOT ID{strcpy(id_str,yylval.str_val);} LEFT_PARENTHESIS elist RIGHT_PARENTHESIS {
+                                                                      
+                                                                    //    $methodcall.elist = $elist;
+                                                                      //  $methodcall.method = 1;
+                                                                      //  $methodcall.name = strdup(id_str);
+                                                                        
+                                                                     
+                                                        }
             ;
 
-elist:  expr expressionlist
-        |
+elist:  expr expressionlist{$elist = $expr; $elist->next = $expressionlist;}
+        | {$elist = NULL;}
         ;
 
-expressionlist: COMMA expr expressionlist
-                |
+expressionlist: COMMA expr expressionlist{$$ = $expr; $$->next = $3;}
+                | {$$ = NULL;}
                 ;
 
 
-objectdef:  LEFT_SQUARE objectdeflist RIGHT_SQUARE  
-            ;
+//objectdef:  LEFT_SQUARE objectdeflist RIGHT_SQUARE  
+  //          ;
 
-objectdeflist: elist | indexed 
+//objectdeflist: elist | indexed 
+//;
+
+tablemake: LEFT_SQUARE elist RIGHT_SQUARE
+{       
+        expr* t = newexpr_type(newtable_e);
+        t->sym = newtemp();
+        emit(tablecreate, t, NULL, NULL, nextquad(), yylineno);
+        int i = 0;
+        while($elist != NULL){ 
+                emit(tablesetelem, t, newexpr_numConst(i++), $elist, nextquad(), yylineno);
+                $elist = $elist->next;
+        }
+        $tablemake = t;
+
+}
+                | LEFT_SQUARE indexed RIGHT_SQUARE
+                {
+                        expr* t = newexpr_type(newtable_e);
+                        t->sym = newtemp();
+                        emit(tablecreate, t, NULL, NULL, nextquad(), yylineno);
+                        while($indexed != NULL){
+                                emit(tablesetelem, t, $indexed, $indexed->index, nextquad(), yylineno);
+                                $indexed = $indexed->next;
+                        }
+                        $tablemake = t;
+                }
 ;
 
-indexed:    LEFT_SQUARE indexedelemlist RIGHT_SQUARE 
-            ;
 
-indexedelemlist: indexedelem
-                 | indexedelem COMMA indexedelemlist
-                 ;
 
-indexedelem:    LEFT_CURLY expr COLON expr RIGHT_CURLY
+indexed:   indexedelem indexedelemlist {$$ = $1; $$->next = $2;} 
+           ;
+
+indexedelemlist: COMMA indexedelem indexedelemlist{$$ = $2; $$->next = $3;}
+                | {$$ = NULL;}
+                ;
+
+indexedelem:    LEFT_CURLY expr COLON expr RIGHT_CURLY{$$ = $4; $$->index = $2;}
                 ;
 
 block:  LEFT_CURLY{scope++;} stmts RIGHT_CURLY{hide_scope(scope); scope--;}
         ;
 
+funcargs: LEFT_PARENTHESIS{scope++; entersscopespace(); } idlist RIGHT_PARENTHESIS{
+                                                                scope--;
+                                                                entersscopespace();
+                                                                resetfunctionlocalsoffset();
+                                                        }
 
-funcdef:    FUNCTION functioname LEFT_PARENTHESIS{scope++;} idlist RIGHT_PARENTHESIS{scope--;} block
+
+
+funcbody: block { 
+        $$ = currscopeoffset();
+        exitscopespace();
+}
+;
+
+
+funcdef:    funcprefix funcargs funcbody { 
+                        exitscopespace();
+                        $1->totalLocals = functionLocalOffset;
+                        int offset = pop(scopeoffsetStack);
+                        restorecurrscopeoffset(offset);
+                        $$ = $1;
+                        emit(funcend,lvalue_expr($1),NULL,NULL,nextquad(),yylineno);
+                }
             ;
 
-functioname: ID {
+funcname: ID {  
                         if(is_library_function(yylval.str_val)){
                                 yyerror("Trying to shadow libfunction\n");
                         }
@@ -328,17 +504,35 @@ functioname: ID {
                                         insert(yylval.str_val, USERFUNCTION, yylineno, scope);
                                 }
                         }
+                        $$ = yylval.str_val;
                 }
              |  {
                         sprintf(buf,"$%d",anonymous_function_counter);
                         anonymous_function_counter++; 
                         insert(buf,USERFUNCTION,yylineno,scope);
+                        $$ = buf;
                         
                 }
              ;
 
+funcprefix: FUNCTION funcname{   
+        $$ = new_symbol($2, USERFUNCTION, yylineno, scope);
+        $$->iaddress = nextquad();
+        emit(funcstart,lvalue_expr($$),NULL,NULL,nextquad(),yylineno);
+        push(scopeoffsetStack, currscopeoffset()); // Save current offset in a stack
+        entersscopespace(); //Entering function arguments scope space
+        resetformalargsoffset(); //Start formals from zero
+        
 
-const:  CONST_REAL | CONST_INT | STRING | NIL | TRUE | FALSE
+}
+
+
+const:  CONST_REAL{$$ = newexpr_numConst(yylval.double_val);} 
+        | CONST_INT {$$ = newexpr_numConst(yylval.int_val);}
+        | STRING {$$ = newexpr_strConst(yylval.str_val);} 
+        | NIL {$$ = newexpr_type(nil_e);} 
+        | TRUE {$$ = newexpr_boolConst(1);} 
+        | FALSE {$$ = newexpr_boolConst(0);} 
         ;
 
 idlist: ID                 {
@@ -419,7 +613,10 @@ int main( int argc, char** argv) {
     else 
         yyin = stdin;
     insert_library_functions();
+    scopeoffsetStack = newStack();
+    initializeStack(scopeoffsetStack);
     yyparse();
-    print_symbol_table();
+    //print_symbol_table();
+    print_quads();
     return 0;
 }

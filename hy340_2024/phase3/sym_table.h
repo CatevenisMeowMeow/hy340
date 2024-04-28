@@ -29,6 +29,8 @@ typedef struct sym_table{
     Type type;
     scopespace_t space;
     unsigned offset;
+    unsigned totalLocals;
+    unsigned iaddress;
     struct sym_table* next;
     struct sym_table* next_scope;
 } symrec;
@@ -43,6 +45,9 @@ typedef struct stack{
 
 
 //STACK FUNCTIONS
+
+Stack *newStack();
+
 //Initializer
 void initializeStack(Stack *stack);
 
@@ -69,6 +74,8 @@ void print_symbol_table();
 
 void insert(char* name, Type type, int line, int scope);
 
+symrec* new_symbol(char* name,Type type, int line, int scope);
+
 void insert_library_functions();
 
 symrec* lookup(char* name);
@@ -86,6 +93,11 @@ int is_library_function(char* name);
 
 
 //STACK FUNCTIONS
+Stack *newStack(){
+    Stack *s = malloc(sizeof(struct stack));
+    return s;
+}
+
 void initializeStack(Stack *stack) {
     stack->top = -1;
 }
@@ -126,7 +138,22 @@ int top(Stack *stack) {
     return stack->items[stack->top];
 }
 
+symrec* new_symbol(char* name,Type type, int line, int scope){
+    //create node
+    symrec *new_symbol = (symrec *)malloc(sizeof(symrec));
+    assert(new_symbol != NULL);
+    new_symbol->active = 1;
+    new_symbol->scope = scope;
+    new_symbol->line = line;
+    new_symbol->type = type;
+    new_symbol->next = NULL;
+    new_symbol->next_scope = NULL;
+    new_symbol -> name = (char*)malloc(strlen(name)+1);
+    assert(new_symbol->name != NULL);
+    strcpy(new_symbol->name, name);
+    return new_symbol;
 
+}
 
 
 

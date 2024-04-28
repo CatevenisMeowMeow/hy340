@@ -79,7 +79,6 @@ typedef struct expr{
 
 
 
-
 //from lectures
 typedef struct quad{
     iopcode op;
@@ -116,8 +115,17 @@ int newlist(int i);
 int mergelist(int l1, int l2);
 void patchlist(int list, int label);
 
+//FUNCTIONS FOR CALLS
+//Call* new_call();
+
+
+void comperror (char* format);
+
 // FUNCTIONS FOR EXPRESSIONS
+
+void check_arith (expr* e, const char* context);
 expr* emit_iftableitem(expr* e);
+expr* member_item(expr* lv, char* name);
 expr* make_call(expr* lv, expr* reversed_elist, int line);
 void add_to_expr_list(expr* elist,expr *e);
 void clear_expr_list(expr* elist);
@@ -128,6 +136,9 @@ unsigned currscopeoffset();
 void incurrscopeoffset();
 void entersscopespace();
 void exitscopespace();
+void resetformalargsoffset();
+void resetfunctionlocalsoffset();
+void restorecurrscopeoffset(unsigned offset);
 int currscope();
 void updateQuadLabel(unsigned quadIndex, unsigned newLabel);
 void validateUnaryMinus(expr * e);
@@ -144,6 +155,7 @@ expr* newexpr_type(expr_t type);
 expr* newexpr_numConst(double num);
 expr* newexpr_strConst(char* str);
 expr* newexpr_boolConst(unsigned int c);
+expr* lvalue_expr(symrec *sym);
 
 // FUNCTIONS FOR QUADS
 void extend_quads_array();
@@ -195,7 +207,36 @@ void patchlist (int list, int label) {
 }
 
 
+void comperror (char* format){
+    fprintf(stderr,"%s\n",format);
+}
+
+
 //FUNCTIONS FOR EXPRESSIONS
+
+//From lectures
+// Use this function to check correct use of
+// of expression in arithmetic
+void check_arith (expr* e, const char* context) {
+    char err[] = "Illegal expr used in ";
+    char error[strlen(err) + strlen(context) +1];
+    strcpy(error,"");
+    strcat(error,err);
+    strcat(error,context); 
+    if( e->type == constbool_e || e->type == conststring_e || e->type == nil_e || e->type == newtable_e|| e->type == programfunc_e || e->type == libraryfunc_e || e->type == boolexpr_e )
+        comperror(error);
+}
+
+
+//from lectures
+expr* member_item(expr* lv, char* name) {
+    lv = emit_iftableitem(lv); // Emit code if r-value use of table item
+    expr* ti = newexpr_type(tableitem_e); // Make a new expression
+    ti->sym = lv->sym;
+    ti->index = newexpr_strConst(name); // Const string index
+    return ti;
+}
+
 
 //from lectures
 expr* emit_iftableitem(expr* e){
@@ -216,7 +257,7 @@ expr* make_call(expr* lv, expr* reversed_elist, int line) {
         emit(param, NULL, reversed_elist, NULL,currQuad,line);
         reversed_elist = reversed_elist->next;
     }
-    emit(call, func,NULL,NULL,0,line);
+    emit(call, func,NULL,NULL,currQuad,line);
     expr* result = newexpr_type(var_e);
     result->sym = newtemp();
     emit(getretval,result,NULL,NULL,currQuad,line);
@@ -312,6 +353,26 @@ void exitscopespace(){
     assert(scopeSpaceCounter > 1);
     --scopeSpaceCounter;
 }
+//Function from lectures
+void resetformalargsoffset(){
+    formalArgOffset = 0;
+}
+
+//Function from lectures
+void resetfunctionlocalsoffset(){
+    functionLocalOffset = 0;
+}
+
+//Function from lectures
+void restorecurrscopeoffset(unsigned offset){
+    switch(currscopespace()){
+        case programvar : programVarOffset = offset; break;
+        case functionlocal : functionLocalOffset = offset; break;
+        case formalarg : formalArgOffset = offset; break;
+        default : assert(0);
+    }
+}
+
 
 int currscope(){
     return scope;
@@ -412,9 +473,32 @@ int is_temp_val(char* name){
 
 //FUNCTIONS FOR EXPRESSIONS
 
+//New expr with symbol. Requested from lectures...
+expr* lvalue_expr(symrec *sym){
+    assert(sym);
+    expr* ex = (expr*)malloc(sizeof(expr));
+    memset(ex,0,sizeof(expr));
+    ex->next = (expr*)0;
+    ex->sym = sym;
+    if(sym == NULL)
+        ex->type = nil_e;
+    else if((sym->type == GLOBALVAR) || (sym->type == LOCALVAR) || (sym->type == FORMAL))
+        ex->type = var_e;
+    else if(sym->type == USERFUNCTION)
+        ex->type = programfunc_e;
+    else if(sym->type == LIBFUNCTION)
+        ex->type = libraryfunc_e;
+    else{
+        assert(0);
+    }
+    return ex;
+}
+
+
 //New expr with an expr_t
 expr* newexpr_type(expr_t type){
     expr* ex = (expr*)malloc(sizeof(expr));
+    memset(ex,0,sizeof(expr));
     ex->type = type;
     return ex;
 }
@@ -504,72 +588,86 @@ int type_matching(expr* arg1, expr* arg2){
 
 
 //Function to print quads array. Does not check for errors assuming quads are correctly inserted
-void print_quads(){
+void print_quads() {
     int i;
-    printf("quad#   opcode      result      arg1        arg2        label\n");
-    printf("-------------------------------------------------------------\n");
-    for(i=0;i<currQuad;i++){
-        //quad#
-        printf("%d         ",i);
+    printf("%-10s%-15s%-20s%-20s%-10s%-10s\n", "quad#", "opcode", "result", "arg1", "arg2", "       label");
+    printf("---------------------------------------------------------------------------------------\n");
+    for (i = 0; i < currQuad; i++) {
+        // quad#
+        printf("%-10d", i);
 
-        //opcode
-        printf("%s      ",iopcode_to_string[quads[i].op]);
+        // opcode
+        printf("%-15s", iopcode_to_string[quads[i].op]);
 
-        //result
-        if(quads[i].result == (expr*)0)
-            printf("             ");
-        else
-            printf("%s      ",quads[i].result->sym->name);
+        // result
+        if (quads[i].result == (expr*)0)
+            printf("%-20s", " ");
+        else {
+            if (quads[i].result->type == constnum_e) {
+                printf("%-20.2f", quads[i].result->numConst);
+            }
+            else if (quads[i].result->type == conststring_e) {
+                printf("%-20s", quads[i].result->strConst);
+            }
+            else if (quads[i].result->type == constbool_e) {
+                printf("%-20s", quads[i].result->boolConst ? "true" : "false");
+            }
+            //otherwise it prints the symbol name(ident)
+            else {
+                assert(quads[i].result->sym);
+                printf("%-20s", quads[i].result->sym->name);
+            }
+        }
 
         //for arg1
         //if it is a constnum, conststring or constbool just prints the value. If null just prints whitespace
-        if(quads[i].arg1 == (expr*)0)
-            printf("          ");
-        else{
-            if(quads[i].arg1->type == constnum_e){
-                    printf("'%.02f'    ",quads[i].arg1->numConst);
-                }
-                else if(quads[i].arg1->type == conststring_e){
-                    printf("'%s'    ",quads[i].arg1->strConst);
+        if (quads[i].arg1 == (expr*)0)
+            printf("%-20s", " ");
+        else {
+            if (quads[i].arg1->type == constnum_e) {
+                printf("%-20.2f", quads[i].arg1->numConst);
             }
-            else if(quads[i].arg1->type == constbool_e){
-                if(quads[i].arg1->boolConst == 0)
-                    printf("'false'      ");
+            else if (quads[i].arg1->type == conststring_e) {
+                printf("%-20s", quads[i].arg1->strConst);
+            }
+            else if (quads[i].arg1->type == constbool_e) {
+                printf("%-20s", quads[i].arg1->boolConst ? "true" : "false");
+            }
+            else {
+                //assert(quads[i].arg1->sym);
+                if(quads[i].arg1->sym == NULL)
+                    printf("(NULL SYMBOL)       ");
                 else
-                    printf("'true'      ");
-            }
-                //otherwise it prints the symbol name(ident)
-            else{
-                assert(quads[i].arg1->sym);
-               printf("%s      ",quads[i].arg1->sym->name);
+                    printf("%-20s", quads[i].arg1->sym->name);
             }
         }
 
         //for arg2
         //Same with arg1
-        if(quads[i].arg2 == (expr*)0)
-            printf("             ");
-        else{
-            if(quads[i].arg2->type == constnum_e){
-                printf("'%.02f'    ",quads[i].arg2->numConst);
+        if (quads[i].arg2 == (expr*)0)
+            printf("%-20s", " ");
+        else {
+            if (quads[i].arg2->type == constnum_e) {
+                printf("%-20.2f", quads[i].arg2->numConst);
             }
-            else if(quads[i].arg2->type == conststring_e){
-                printf("'%s'    ",quads[i].arg2->strConst);
+            else if (quads[i].arg2->type == conststring_e) {
+                printf("%-20s", quads[i].arg2->strConst);
             }
-            else if(quads[i].arg2->type == constbool_e){
-                if(quads[i].arg2->boolConst == 0)
-                    printf("'false'      ");
+            else if (quads[i].arg2->type == constbool_e) {
+                printf("%-20s", quads[i].arg2->boolConst ? "true" : "false");
+            }
+            else {
+                 //assert(quads[i].arg1->sym);
+                if(quads[i].arg2->sym == NULL)
+                    printf("(NULL SYMBOL)       ");
                 else
-                    printf("'true'      ");
-            }
-            else{
-                 assert(quads[i].arg2->sym);
-                printf("%s      ",quads[i].arg2->sym->name);
+                    printf("%-20s", quads[i].arg2->sym->name);
             }
         }
-        //for label
-        printf("%d\n",quads[i].label);
-    }
 
+        // label
+        printf("%-10d\n", quads[i].label);
+    }
+    printf("\n---------------------------------------------------------------------------------------\n");
 }
 
