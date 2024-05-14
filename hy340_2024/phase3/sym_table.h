@@ -6,7 +6,7 @@
 
 
 int scope = 0;
-int loopcounter = 0;
+
 
 typedef enum Type{GLOBALVAR, LOCALVAR, FORMAL, USERFUNCTION, LIBFUNCTION} Type;
 
@@ -100,6 +100,9 @@ Stack *newStack(){
 
 void initializeStack(Stack *stack) {
     stack->top = -1;
+    Stack *tmp = stack;
+    for(int i = 0; i < MAX_SIZE; i++)
+        tmp->items[i] = 0;
 }
 
 
@@ -136,6 +139,22 @@ int top(Stack *stack) {
         exit(1);
     }
     return stack->items[stack->top];
+}
+
+void top_increment(Stack *stack){
+    if (isEmpty(stack)) {
+        fprintf(stderr,"Stack is empty\n");
+        exit(1);
+    }
+     stack->items[stack->top]++;
+}
+
+void top_decrement(Stack *stack){
+    if (isEmpty(stack)) {
+        fprintf(stderr,"Stack is empty\n");
+        exit(1);
+    }
+    stack->items[stack->top]--;
 }
 
 symrec* new_symbol(char* name,Type type, int line, int scope){

@@ -5,11 +5,25 @@
 //Global vars
 int temp_values_counter = 0;
 
+
+
+
 //Global vars from lectures
 unsigned programVarOffset = 0;
 unsigned functionLocalOffset = 0;
 unsigned formalArgOffset = 0;
 unsigned scopeSpaceCounter = 1;
+
+//from lectures
+struct lc_stack_t {
+    struct lc_stack_t* next;
+    unsigned counter;
+} *lcs_top = 0, *lcs_bottom = 0;
+
+#define loopcounter  lcs_top->counter
+
+extern void push_loopcounter();
+extern void pop_loopcounter();
 
 
 
@@ -35,7 +49,7 @@ char *iopcode_to_string[] = {
     "not", "if_eq", "if_noteq",
     "if_lesseq", "if_greatereq", "if_less",
     "if_greater", "call", "param",
-    "ret", "getretval",  "funcstart",
+    "return", "getretval",  "funcstart",
     "funcend", "tablecreate", "jump",
     "tablegetelem", "tablesetelem"
 };
@@ -55,11 +69,6 @@ typedef enum expr_t{
     conststring_e,
     nil_e
 } expr_t;
-
-//from lectures
-typedef struct stmt_t {
-    int breakList, contList;
-} stmt_t;
 
 
 //from lectures
@@ -110,20 +119,16 @@ quad* quads = (quad*) 0;
 //FUNCTIONS DEFINITIONS(HELPS TO REMOVE WARNINGS)
 
 // FUNCTIONS FOR STMTS
-void make_stmt(stmt_t* s);
+//void make_stmt(stmt_t* s);
 int newlist(int i);
 int mergelist(int l1, int l2);
 void patchlist(int list, int label);
 
-//FUNCTIONS FOR CALLS
-//Call* new_call();
-
-
-void comperror (char* format);
+void comperror (char* format, int line);
 
 // FUNCTIONS FOR EXPRESSIONS
 
-void check_arith (expr* e, const char* context);
+void check_arith (expr* e, const char* context, int line);
 expr* emit_iftableitem(expr* e);
 expr* member_item(expr* lv, char* name);
 expr* make_call(expr* lv, expr* reversed_elist, int line);
@@ -160,7 +165,6 @@ expr* lvalue_expr(symrec *sym);
 // FUNCTIONS FOR QUADS
 void extend_quads_array();
 void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsigned line);
-void emit_function_params(expr* elist);
 int type_matching(expr* arg1, expr* arg2);
 void print_quads();
 
@@ -171,11 +175,38 @@ void print_quads();
 
 //FUNCTIONS...
 
+//FUNCTIONS FOR struct lc_stack
+
+void push_loopcounter() {
+    struct lc_stack_t* new_node = (struct lc_stack_t*)malloc(sizeof(struct lc_stack_t));
+    assert(new_node);
+    new_node->counter = 0; 
+    new_node->next = lcs_top;
+    lcs_top = new_node;
+    if (lcs_bottom == NULL) {
+        lcs_bottom = lcs_top; //If the stack is empty, set bottom = top
+    }
+}
+
+
+void pop_loopcounter() {
+    assert(lcs_top);
+    struct lc_stack_t* temp = lcs_top;
+    lcs_top = lcs_top->next;
+    free(temp);
+    if (lcs_top == NULL) {
+        lcs_bottom = NULL; //If stack is empty, bottom = null
+    }
+}
+
+
+
+
 //FUNCTIONS FOR STMTS
 
 //from lectures
-void make_stmt (stmt_t* s)
-{ s->breakList = s->contList = 0; }
+//void make_stmt (stmt_t* s)
+//{ s->breakList = s->contList = 0; }
 
 //from lectures
 int newlist (int i)
@@ -186,14 +217,15 @@ int mergelist (int l1, int l2) {
     if (!l1)
         return l2;
     else
-        if (!l2)
-            return l1;
+    if (!l2)
+        return l1;
     else {
         int i = l1;
         while (quads[i].label)
             i = quads[i].label;
+            
         quads[i].label = l2;
-    return l1;
+        return l1;
     }
 }
 
@@ -207,8 +239,8 @@ void patchlist (int list, int label) {
 }
 
 
-void comperror (char* format){
-    fprintf(stderr,"%s\n",format);
+void comperror (char* format, int line){
+    fprintf(stderr,"%s at line %d\n",format,line);
 }
 
 
@@ -217,14 +249,14 @@ void comperror (char* format){
 //From lectures
 // Use this function to check correct use of
 // of expression in arithmetic
-void check_arith (expr* e, const char* context) {
+void check_arith (expr* e, const char* context, int line) {
     char err[] = "Illegal expr used in ";
     char error[strlen(err) + strlen(context) +1];
     strcpy(error,"");
     strcat(error,err);
     strcat(error,context); 
     if( e->type == constbool_e || e->type == conststring_e || e->type == nil_e || e->type == newtable_e|| e->type == programfunc_e || e->type == libraryfunc_e || e->type == boolexpr_e )
-        comperror(error);
+        comperror(error, line);
 }
 
 
@@ -245,7 +277,7 @@ expr* emit_iftableitem(expr* e){
     else{
         expr* result = newexpr_type(var_e);
         result->sym = newtemp();
-        emit(tablegetelem, result,e, e->index, currQuad, e->sym->line);
+        emit(tablegetelem, result,e, e->index, 0, e->sym->line);
         return result;
     }
 }
@@ -254,13 +286,13 @@ expr* emit_iftableitem(expr* e){
 expr* make_call(expr* lv, expr* reversed_elist, int line) {
     expr* func = emit_iftableitem(lv);
     while (reversed_elist) {
-        emit(param, NULL, reversed_elist, NULL,currQuad,line);
+        emit(param, NULL, reversed_elist, NULL,0,line);
         reversed_elist = reversed_elist->next;
     }
-    emit(call, func,NULL,NULL,currQuad,line);
+    emit(call, func,NULL,NULL,0,line);
     expr* result = newexpr_type(var_e);
     result->sym = newtemp();
-    emit(getretval,result,NULL,NULL,currQuad,line);
+    emit(getretval,result,NULL,NULL,0,line);
     return result;
 }
 
@@ -302,7 +334,8 @@ void clear_expr_list(expr* elist){
 
 //function from lectures
 void patchlabel(unsigned quadNo, unsigned label){
-    assert(quadNo < currQuad && !quads[quadNo].label);
+    assert(quadNo < currQuad );
+    assert(!quads[quadNo].label);  
     quads[quadNo].label = label;
 }
 
@@ -535,14 +568,13 @@ expr* newexpr_boolConst(unsigned int c){
 
 //to extend the dynamic quads array
 void extend_quads_array(){
-    quad* new_quads = malloc(NEW_SIZE); 
-    if(total = 0){
-        quads = new_quads;
-        return;
+    assert(total == currQuad);
+    quad* p = malloc(NEW_SIZE); 
+    if(quads){
+        memcpy(p, quads, CURR_SIZE);
+        free(quads);
     }
-    memcpy(new_quads, quads, CURR_SIZE);
-    free(quads);
-    quads = new_quads;
+    quads = p;
     total = total + EXPAND_SIZE;
 }
 
@@ -551,8 +583,7 @@ void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsi
     if(currQuad == total){
         extend_quads_array();
     }
-    quad* q = quads + currQuad;
-    currQuad++;
+    quad* q = quads + currQuad++;
     q->arg1 = arg1;
     q->arg2 = arg2;
     q->op = op;
@@ -562,19 +593,6 @@ void emit(iopcode op, expr* result, expr* arg1, expr* arg2, unsigned label, unsi
     
 }
 
-//function to make function def using elist
-//Should make the elist first then call this function and then clear_expr_elist
-//Should put the correct type to make multiple quads with this type
-void emit_function_params(expr* elist){
-    expr* e = elist;
-    assert(e);
-    while(e != NULL){
-        assert(e->sym != NULL);
-        emit(param,NULL,e,NULL,0,e->sym->line);
-        e = e->next;
-    }
-
-}
 
 //function that compares the types between two expressions. Returns 1 at success and 0 at fail.
 int type_matching(expr* arg1, expr* arg2){
@@ -614,8 +632,10 @@ void print_quads() {
             }
             //otherwise it prints the symbol name(ident)
             else {
-                assert(quads[i].result->sym);
-                printf("%-20s", quads[i].result->sym->name);
+                if(quads[i].result->sym == NULL)
+                    printf("(NULL SUMBOL)");
+                else
+                    printf("%-20s", quads[i].result->sym->name);
             }
         }
 
@@ -666,8 +686,21 @@ void print_quads() {
         }
 
         // label
-        printf("%-10d\n", quads[i].label);
+        //printf("%-10d\n", quads[i].label);
+        switch (quads[i].op) {
+            case jump:
+            case if_eq:
+            case if_noteq:
+            case if_lesseq:
+            case if_greatereq:
+            case if_less:
+            case if_greater:
+                printf("%-10d\n", quads[i].label);
+                break;
+            default:
+                printf("%-10s\n", "");
+                break;
+        }
     }
     printf("\n---------------------------------------------------------------------------------------\n");
 }
-
