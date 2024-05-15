@@ -703,12 +703,11 @@ while: whilestart whilecond loopstmt
                 while(breakstack->top != -1){
                         patchlist(pop(breakstack), nextquad());
                 }
-               // patchlist($loopstmt.breaklist, nextquad()); 
                 while(contstack->top != -1){
                         patchlist(pop(contstack), $whilestart); 
                 }
-              //  patchlist($loopstmt.contlist, $whilestart); 
         }
+
         //That was from lectures
        // patchlist($loopstmt.breaklist, nextquad()); 
        // patchlist($loopstmt.contlist, $whilestart); 
@@ -739,13 +738,13 @@ for: forprefix N elist RIGHT_PARENTHESIS N loopstmt N
         patchlabel($5, $forprefix.test); // loop jump
         patchlabel($7, $2 + 1); // closure jump
 
-         //This is new patenda with stack
+        //This is new patenda with stack
         if(breakstack->top == -1 && contstack->top == -1){
                 patchlist($loopstmt.breaklist, nextquad());
                 patchlist($loopstmt.contlist, $2 + 1); 
         }
         else{
-                while(breakstack->top != -1 ){
+                while(breakstack->top != -1){
                         patchlist(pop(breakstack), nextquad());
                 }
                 while(contstack->top != -1){
