@@ -1,0 +1,75 @@
+a = 1;
+b = 2;
+c = 4;
+g;
+x = [-4, 13, 12.34, a+b];
+d = a + b + c;
+t =[ {"x": 0},{"y": a+b},{-1: 0} ];
+
+function (a,b,ga){ function (){ d = 0;}; return a+b;};
+a++;
+a--;
+
+local b = 5;
+a = a + b;
+a = b/a;
+a = 2;
+
+x = b == a;
+y = b>a;
+z = ad();
+
+print("aaa");
+
+
+n = pi = 3.14159265358979323846;
+nl = "\n";
+a = "";
+
+function f(a,v){};
+
+
+
+
+for(local i=0; i<1; ++i){
+   if(i!=2){
+      ::b = 5;
+      
+      b = 1.2;
+      local a = b; 
+	print(::a, nl);
+
+   }
+   else
+      ::n=123.123456;
+}
+ local x = 2;
+while ( yy >= 3) {
+   if ( yy and 1 == true)
+      break;
+   else if ( 4 % yy == false)
+      continue;
+   else {
+      yy_underline--;
+   }
+}
+
+
+function Node (){
+	return [
+		{"New": (function (arg) { return arg;})},	
+		{a:"a"}
+	];
+}
+
+
+function Node2 (arg1, arg2, arg3){
+	return [ [1], [2] ];
+}
+
+Node();
+Node2(a,2,3,4,5, Node().new());
+
+pinakas = [{i: (function (a) {return a;})},{j: "j"}];
+pinakas[i] = 3.45;
+pinakas..i();
