@@ -6,13 +6,6 @@
 int temp_values_counter = 0;
 
 //Global vars from lectures
-unsigned consts_newstring(char* s);
-unsigned consts_newnumber(double n);
-unsigned libfuncs_newused(char* s);
-unsigned userfuncs_newfunc(symrec* sym);
-
-
-//Global vars from lectures
 unsigned programVarOffset = 0;
 unsigned functionLocalOffset = 0;
 unsigned formalArgOffset = 0;
@@ -99,6 +92,7 @@ typedef struct quad{
     expr * arg1;
     expr * arg2;
     unsigned label;
+    unsigned taddress;
     unsigned line;
 } quad;
 
