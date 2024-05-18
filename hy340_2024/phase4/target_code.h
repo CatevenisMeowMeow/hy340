@@ -12,13 +12,6 @@ unsigned totalNamedLibFuncs = 0;
 unsigned totalUserFuncs = 0;
 
 
-//from lectures
-unsigned consts_newstring(char* s);
-unsigned consts_newnumber(double n);
-unsigned libfuncs_newused(char* s);
-unsigned userfuncs_newfunc(symrec* sym);
-
-
 
 
 //from lectures
@@ -64,6 +57,18 @@ typedef struct instruction{
     unsigned srcLine; 
 } instruction;
 
+
+unsigned totalInstructions = 0;
+unsigned int currInstruction = 0;
+instruction* instructions = (instruction*) 0;
+
+
+#define EXPAND_INSRUCTION_SIZE 1024
+#define CURR_INSTRUCTION_SIZE   (totalInstructions*sizeof(instruction))
+#define NEW_INSTRUCTION_SIZE    (EXPAND_INSRUCTION_SIZE*sizeof(instruction) + CURR_INSTRUCTION_SIZE)
+
+
+
 typedef struct userfunc{
     unsigned address;
     unsigned localSize;
@@ -71,15 +76,94 @@ typedef struct userfunc{
 } userfunc;
 
 
-
-void make_operand(expr* e, vmarg* arg);
-
+//from lectures
+typedef struct incomplete_jump{
+    unsigned instrNo;
+    unsigned iaddress;
+    struct incomplete_jump* next;
+} incomplete_jump;
 
 
 //from lectures
+incomplete_jump* ij_head = (incomplete_jump*) 0;
+unsigned ij_total = 0;
+
+
+
+
+
+
+//from lectures. Prodhlwsh
+unsigned consts_newstring(char* s);
+unsigned consts_newnumber(double n);
+unsigned libfuncs_newused(char* s);
+unsigned userfuncs_newfunc(symrec* sym);
+void make_numberoperand(vmarg* arg, double val);
+void make_booloperand(vmarg* arg, unsigned val);
+void make_retvaloperand(vmarg* arg);
+void make_operand(expr* e, vmarg* arg);
+unsigned nextinstructionlabel();
+void extend_instructions_array();
+void emit_instruction(instruction *t);
+void add_incomplete_jump(unsigned instrNo, unsigned iaddress);
+void patch_incomplete_jumps();
+void generate(vmopcode op, quad* q);
+void generate_ADD(quad *q);
+void generate_SUB(quad *q);
+void generate_MUL(quad *q);
+void generate_DIV(quad *q);
+void generate_MOD(quad *q);
+void generate_NEWTABLE(quad *q);
+void generate_TABLEGETELEM(quad *q);
+void generate_TABLESETELEM(quad *q);
+void generate_ASSIGN(quad *q);
+void generate_NOP(quad *q);
+void generate_relational (vmopcode op, quad *q);
+void generate_JUMP (quad *q);
+void generate_IF_EQ (quad *q);
+void generate_IF_NOTEQ(quad *q);
+void generate_IF_GREATER (quad *q);
+void generate_IF_GREATEREQ(quad *q);
+void generate_IF_LESS (quad *q);
+void generate_IF_LESSEQ (quad *q);
+void generate_NOT (quad *q);
+void generate_OR (quad *q);
+void generate_PARAM(quad *q);
+void generate_CALL(quad *q);
+void generate_GETRETVAL(quad *q);
+void generate_FUNCSTART(quad *q);
+void generate_RETURN(quad *q);
+void generate_FUNCEND(quad *q);
+
+
+
+
+
+
+//from lectures //TODO complete cases
 void make_operand(expr* e, vmarg* arg){
+    if(e == NULL){
+        arg->type = nil_a;
+        return;
+    }
     switch(e->type){
-        case var_e:
+        case var_e:{
+            assert(e->sym);
+            arg->val = e->sym->offset;
+            if(e->sym->type == USERFUNCTION)
+                arg->type = userfunc_a;
+            else if(e->sym->type == LIBFUNCTION)
+                arg->type = libfunc_a;
+            else if(e->sym->type == GLOBALVAR)
+                arg->type = global_a;
+            else if(e->sym->type == LOCALVAR)
+                arg->type = local_a;
+            else if(e->sym->type == FORMAL)
+                arg->type = formal_a;
+            else
+                assert(0);
+            break;
+        }
         case tableitem_e:
         case arithexpr_e:
         case boolexpr_e:
@@ -136,15 +220,6 @@ void make_retvaloperand(vmarg* arg){
     arg->type = retval_a;
 }
 
-unsigned totalInstructions = 0;
-unsigned int currInstruction = 0;
-instruction* instructions = (instruction*) 0;
-
-
-#define EXPAND_INSRUCTION_SIZE 1024
-#define CURR_INSTRUCTION_SIZE   (totalInstructions*sizeof(instruction))
-#define NEW_INSTRUCTION_SIZE    (EXPAND_INSRUCTION_SIZE*sizeof(instruction) + CURR_INSTRUCTION_SIZE)
-
 
 unsigned nextinstructionlabel(){
     return currInstruction;
@@ -172,17 +247,6 @@ void emit_instruction(instruction *t){
     i->result = t->result;
     i->srcLine = t->srcLine;
 }
-
-//from lectures
-typedef struct incomplete_jump{
-    unsigned instrNo;
-    unsigned iaddress;
-    struct incomplete_jump* next;
-} incomplete_jump;
-
-//from lectures
-incomplete_jump* ij_head = (incomplete_jump*) 0;
-unsigned ij_total = 0;
 
 //from lectures
 void add_incomplete_jump(unsigned instrNo, unsigned iaddress){
@@ -236,5 +300,28 @@ void generate_TABLEGETELEM(quad *q){ generate(tablegetelem_v, q); }
 void generate_TABLESETELEM(quad *q){ generate(tablesetelem_v, q); }
 void generate_ASSIGN(quad *q){ generate(assign_v, q); }
 void generate_NOP(quad *q){ instruction *t = (instruction*)malloc(sizeof(instruction)); t->opcode = nop_v;  emit_instruction(t);}
-//TODO........
-
+void generate_relational(vmopcode op, quad *q){
+    instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = op;
+    make_operand(q->arg1, &t->arg1);
+    make_operand(q->arg2, &t->arg2);
+    t->result.type = label_a;
+    if(q->label < currQuad){
+        t->result.val = quads[q->label].taddress;
+    }
+    else{
+        add_incomplete_jump(nextinstructionlabel(), q->label);
+    }
+    q->taddress = nextinstructionlabel();
+    emit_instruction(t);
+}
+void generate_JUMP(quad *q){ generate_relational(jump_v, q); }
+void generate_IF_EQ(quad *q){ generate_relational(if_eq_v, q);}
+void generate_IF_NOTEQ(quad *q){ generate_relational(if_noteq_v, q);}
+void generate_IF_GREATER(quad *q){ generate_relational(if_greater_v, q);}
+void generate_IF_GREATEREQ(quad *q){ generate_relational(if_greatereq_v, q);}
+void generate_IF_LESS(quad *q){ generate_relational(if_less_v, q);}
+void generate_IF_LESSEQ(quad *q){ generate_relational(if_lesseq_v, q);}
+void generate_NOT(quad *q){
+    //TODO
+}
