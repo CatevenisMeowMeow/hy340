@@ -1,6 +1,15 @@
 #include "quads.h"
 
 
+//This one stores functions and symbols. Requested from lectures for FUNCSTART
+struct functionstack {
+    struct functionstack* next;
+    symrec* top;
+};
+
+struct functionstack *funcstack = NULL;
+
+
 //Global vars from lectures
 double* numConsts;
 unsigned totalNumConsts = 0;
@@ -102,6 +111,7 @@ void make_numberoperand(vmarg* arg, double val);
 void make_booloperand(vmarg* arg, unsigned val);
 void make_retvaloperand(vmarg* arg);
 void make_operand(expr* e, vmarg* arg);
+void resetoperand(vmarg *a);
 unsigned nextinstructionlabel();
 void extend_instructions_array();
 void emit_instruction(instruction *t);
@@ -135,10 +145,48 @@ void generate_FUNCSTART(quad *q);
 void generate_RETURN(quad *q);
 void generate_FUNCEND(quad *q);
 
+void pop_functionstack(struct functionstack *stack);
+void push_functionstack(struct functionstack *stack, symrec *s);
+symrec* top_functionstack(struct functionstack* stack);
+
+
+
+//Functions for functionstack
+void push_functionstack(struct functionstack *stack, symrec *s) {
+    assert(s);
+    struct functionstack* new_node = (struct functionstack*)malloc(sizeof(struct functionstack));
+    assert(new_node);
+    new_node->top = s; 
+    if(stack == NULL){
+        stack = new_node;
+        stack->next = NULL;
+        return;
+    }
+    new_node->next = stack;
+    stack = new_node;
+
+    
+}
+
+void pop_functionstack(struct functionstack *stack) {
+    assert(stack);
+    struct functionstack* temp = stack;
+    stack = stack->next;
+    free(temp);
+}
+
+symrec* top_functionstack(struct functionstack* stack){
+    assert(stack);
+    assert(stack->top);
+    return stack->top;
+}
 
 
 
 
+void resetoperand(vmarg *a){
+    a = (vmarg*)0;
+}
 
 //from lectures //TODO complete cases
 void make_operand(expr* e, vmarg* arg){
@@ -193,7 +241,7 @@ void make_operand(expr* e, vmarg* arg){
         case nil_e: arg->type = nil_a; break;
         case programfunc_e:{
             arg->type = userfunc_a;
-            arg->val = e->sym->iaddress;
+            arg->val = e->sym->taddress;
             break;
         }
         case libraryfunc_e:{
@@ -300,6 +348,7 @@ void generate_TABLEGETELEM(quad *q){ generate(tablegetelem_v, q); }
 void generate_TABLESETELEM(quad *q){ generate(tablesetelem_v, q); }
 void generate_ASSIGN(quad *q){ generate(assign_v, q); }
 void generate_NOP(quad *q){ instruction *t = (instruction*)malloc(sizeof(instruction)); t->opcode = nop_v;  emit_instruction(t);}
+
 void generate_relational(vmopcode op, quad *q){
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = op;
@@ -322,6 +371,102 @@ void generate_IF_GREATER(quad *q){ generate_relational(if_greater_v, q);}
 void generate_IF_GREATEREQ(quad *q){ generate_relational(if_greatereq_v, q);}
 void generate_IF_LESS(quad *q){ generate_relational(if_less_v, q);}
 void generate_IF_LESSEQ(quad *q){ generate_relational(if_lesseq_v, q);}
+
 void generate_NOT(quad *q){
-    //TODO
+    q->taddress = nextinstructionlabel();
+    instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = if_eq_v;
+    make_operand(q->arg1, &t->arg1);
+    make_booloperand(&t->arg2, 0);
+    t->result.type = label_a;
+    t->result.val = nextinstructionlabel() + 3;
+    emit_instruction(t);
+    
+    t->opcode = assign_v;
+    make_booloperand(&t->arg1, 0);
+    resetoperand(&t->arg2);
+    make_operand(q->result, &t->result);
+    emit_instruction(t);
+
+    t->opcode = jump_v;
+    resetoperand(&t->arg1);
+    resetoperand(&t->arg2);
+    t->result.type = label_a;
+    t->result.val = nextinstructionlabel() + 2;
+    emit_instruction(t);
+
+    t->opcode = assign_v;
+    make_booloperand(&t->arg1, 1);
+    resetoperand(&t->arg2);
+    make_operand(q->result, &t->result);
+    emit_instruction(t);
+
+}
+
+void generate_OR(quad *q){
+    q->taddress = nextinstructionlabel();
+    instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = if_eq_v;
+    make_operand(q->arg1, &t->arg1);
+    make_booloperand(&t->arg2, 1);
+    t->result.type = label_a;
+    t->result.val = nextinstructionlabel() + 4;
+    emit_instruction(t);
+
+    make_operand(q->arg2, &t->arg1);
+    t->result.val = nextinstructionlabel() + 3;
+    emit_instruction(t);
+
+    t->opcode = assign_v;
+    make_booloperand(&t->arg1, 0);
+    resetoperand(&t->arg2);
+    make_operand(q->result, &t->result);
+    emit_instruction(t);
+
+    t->opcode = jump_v;
+    resetoperand(&t->arg1);
+    resetoperand(&t->arg2);
+    t->result.type = label_a;
+    t->result.val = nextinstructionlabel() + 2;
+    emit_instruction(t);
+
+    t->opcode = assign_v;
+    make_booloperand(&t->arg1, 1);
+    resetoperand(&t->arg2);
+    make_operand(q->result, &t->result);
+    emit_instruction(t);
+}
+
+void generate_PARAM(quad *q){
+    q->taddress = nextinstructionlabel();
+    instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = pusharg_v;
+    make_operand(q->arg1, &t->arg1);
+    emit_instruction(t);
+}
+
+void generate_CALL(quad *q){
+    q->taddress = nextinstructionlabel();
+    instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = call_v;
+    make_operand(q->arg1, &t->arg1);
+    emit_instruction(t);
+}
+
+void generate_GETRETVAL(quad *q){
+    q->taddress = nextinstructionlabel();
+    instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = assign_v;
+    make_operand(q->result, &t->result);
+    make_retvaloperand(&t->arg1);
+    emit_instruction(t);
+}
+
+void generate_FUNCSTART(quad *q){
+    symrec *f = q->result->sym;
+    f->taddress = nextinstructionlabel(); // Symbols have iaddress field NOT taddress
+    q->taddress = nextinstructionlabel();
+    //TODO 
+
+
 }

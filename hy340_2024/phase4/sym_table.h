@@ -31,6 +31,7 @@ typedef struct sym_table{
     unsigned offset;
     unsigned totalLocals;
     unsigned iaddress;
+    unsigned taddress;
     struct sym_table* next;
     struct sym_table* next_scope;
 } symrec;
