@@ -21,6 +21,13 @@ char *type_to_string[] = {
     "library function"
 };
 
+
+typedef struct returnList{
+    unsigned label;
+    struct returnList *next;
+} returnList;
+
+
 typedef struct sym_table{
     int active;
     int scope;
@@ -32,6 +39,7 @@ typedef struct sym_table{
     unsigned totalLocals;
     unsigned iaddress;
     unsigned taddress;
+    struct returnList* returnlist;
     struct sym_table* next;
     struct sym_table* next_scope;
 } symrec;

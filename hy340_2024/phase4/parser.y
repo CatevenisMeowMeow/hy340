@@ -290,25 +290,19 @@ term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS{$$ = $2;}
                         }
         | primary {$$ = $1; }
         ;
-        //Unnecessary???
 assignexpr: lvalue{    
-                      /* if($1 != NULL){
-                                if($1->sym != NULL && ($1->sym->type == USERFUNCTION || $1->sym->type == LIBFUNCTION))
-                                                yyerror("Variable is defined as function");
-                                if(lookup_scope(yylval.str_val, scope) == NULL){
-                                        if(scope == 0)
-                                                insert(yylval.str_val, GLOBALVAR, yylineno, scope);
-                                        else
-                                                insert(yylval.str_val, LOCALVAR, yylineno, scope);
-                                }
+                       
+                       if($1 == NULL){
+                                if(scope == 0)
+                                        insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                else
+                                        insert(yylval.str_val, LOCALVAR, yylineno, scope);
                                 
                                 tmp = lookup_scope(yylval.str_val, scope);
-                                $1 = lvalue_expr(tmp);
-                                extraSets($1->sym);
+                                tmp->space = currscopespace();
+                                tmp->offset = currscopeoffset();
+                                incurrscopeoffset();
                         }
-                        else{
-                                assert(0);
-                        }*/
                 } 
                 ASSIGN expr{  
                                 
@@ -326,7 +320,20 @@ assignexpr: lvalue{
                 }
             ;
 
-primary:    lvalue {$$ = emit_iftableitem($1);}
+primary:    lvalue {
+                        if($1 == NULL){
+                                if(scope == 0)
+                                        insert(yylval.str_val, GLOBALVAR, yylineno, scope);
+                                else
+                                        insert(yylval.str_val, LOCALVAR, yylineno, scope);
+                                
+                                tmp = lookup_scope(yylval.str_val, scope);
+                                tmp->space = currscopespace();
+                                tmp->offset = currscopeoffset();
+                                incurrscopeoffset();
+                        }
+                        $$ = emit_iftableitem($1);
+        }
             | call {$$ = $1;}
             | tablemake {$$ = $1;} 
             | LEFT_PARENTHESIS funcdef RIGHT_PARENTHESIS {
@@ -350,6 +357,7 @@ lvalue: ID      {
                                         tmp = lookup_scope(yylval.str_val,scope);
                                         tmp->space = currscopespace();
                                         tmp->offset = currscopeoffset();
+                                        incurrscopeoffset();
                                         $$ = lvalue_expr(tmp);
                                 }
                                 else{
@@ -357,6 +365,7 @@ lvalue: ID      {
                                         tmp = lookup_scope(yylval.str_val,scope);
                                         tmp->space = currscopespace();
                                         tmp->offset = currscopeoffset();
+                                        incurrscopeoffset();
                                         $$ = lvalue_expr(tmp);
                                 }
                         }
@@ -394,11 +403,17 @@ lvalue: ID      {
                                                         if(scope == 0){
                                                                 insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                                                 tmp = lookup_scope(yylval.str_val,scope);
+                                                                tmp->offset = currscopeoffset();
+                                                                tmp->space = currscopespace();
+                                                                incurrscopeoffset();
                                                                 $$ = lvalue_expr(tmp);
                                                         }
                                                         else{
                                                                 insert(yylval.str_val, LOCALVAR, yylineno, scope);
                                                                 tmp = lookup_scope(yylval.str_val,scope);
+                                                                tmp->offset = currscopeoffset();
+                                                                tmp->space = currscopespace();
+                                                                incurrscopeoffset();
                                                                 $$ = lvalue_expr(tmp);
                                                         }
                                                 }
@@ -519,7 +534,7 @@ block:  LEFT_CURLY{scope++;} stmts RIGHT_CURLY{hide_scope(scope); scope--;}
 |LEFT_CURLY  RIGHT_CURLY //for empty blocks
         ;
 
-funcargs: LEFT_PARENTHESIS{scope++; } idlist RIGHT_PARENTHESIS{
+funcargs: LEFT_PARENTHESIS{scope++;  entersscopespace();} idlist RIGHT_PARENTHESIS{
                                                                 scope--;
                                                                 entersscopespace();
                                                                 resetfunctionlocalsoffset();
@@ -529,7 +544,8 @@ funcargs: LEFT_PARENTHESIS{scope++; } idlist RIGHT_PARENTHESIS{
 
 funcbody: block { 
         $$ = currscopeoffset();
-        exitscopespace();
+       
+
 }
 ;
 
@@ -547,12 +563,14 @@ funcblockend:
         scope--;
         infunction--;
         pop_loopcounter();
+        
 }
 ;
 
 
 
 funcdef:    funcprefix funcargs funcblockstart funcbody funcblockend { 
+                        exitscopespace();
                         exitscopespace();
                         $1->totalLocals = $funcbody;
                         int offset = pop(scopeoffsetStack);
@@ -577,6 +595,10 @@ funcname: ID {
                                 }
                                 else{
                                         insert(yylval.str_val, USERFUNCTION, yylineno, scope);
+                                        tmp = lookup_scope(yylval.str_val,scope);
+                                        tmp->offset = currscopeoffset();
+                                        tmp->space = currscopespace();
+                                        incurrscopeoffset();
                                 }
                         }
                         resetformalargsoffset();
@@ -587,6 +609,10 @@ funcname: ID {
                         anonymous_function_counter++; 
                         insert(buf,USERFUNCTION,yylineno,scope);
                         $$ = buf;
+                        tmp = lookup_scope(buf,scope);
+                        tmp->offset = currscopeoffset();
+                        tmp->space = currscopespace();
+                        incurrscopeoffset();
                         resetformalargsoffset();
                         
                 }
@@ -625,7 +651,12 @@ idlist: ID                 {
                                                 }
                                                 else{
                                                         insert(yylval.str_val,FORMAL,yylineno,scope);
+                                                        tmp = lookup_scope(yylval.str_val,scope);
+                                                        tmp->offset = currscopeoffset();
+                                                        tmp->space = currscopespace();
+                                                        incurrscopeoffset();
                                                 }
+                                                
                                         }     
                                 }
         | ID {                          formalArgOffset++;
@@ -639,6 +670,10 @@ idlist: ID                 {
                                                 }      
                                                 else{
                                                         insert(yylval.str_val,FORMAL,yylineno,scope);
+                                                        tmp = lookup_scope(yylval.str_val,scope);
+                                                        tmp->offset = currscopeoffset();
+                                                        tmp->space = currscopespace();
+                                                        incurrscopeoffset();
                                                 }
                                         }     
                                 } COMMA idlist
@@ -795,14 +830,16 @@ int yyerror(char* message){
 
 int main( int argc, char** argv) {
 
-    if(argc > 1){
-        if(!(yyin = fopen(argv[1],"r"))){
-                fprintf(stderr,"Cannot open file: %s\n",argv[1]);
-                return 1;
+       // FILE *f = fopen("target_code","w");
+
+        if(argc > 1){
+                if(!(yyin = fopen(argv[1],"r"))){
+                        fprintf(stderr,"Cannot open file: %s\n",argv[1]);
+                        return 1;
+                }
         }
-    }
-    else 
-        yyin = stdin;
+        else 
+                yyin = stdin;
         insert_library_functions();
         
         scopeoffsetStack = newStack();
@@ -821,6 +858,11 @@ int main( int argc, char** argv) {
         yyparse();
         
         //print_symbol_table();
-        print_quads();
+        //print_quads();
+
+        generate_all();
+        print_instructions();
+        print_instructions_vals();
+        //print_binary_instructions(f);
         return 0;
 }

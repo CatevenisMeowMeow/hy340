@@ -23,32 +23,31 @@ extern void push_loopcounter();
 extern void pop_loopcounter();
 
 
-
 //from lectures
 typedef enum iopcode{
-    assign, add, sub,
-    mul, divide,/*cant use div*/ mod,
-    uminus, and, or,
-    not, if_eq, if_noteq,
-    if_lesseq, if_greatereq, if_less,
-    if_greater, call, param,
-    ret, getretval,  funcstart,
-    funcend, tablecreate, jump,
-    tablegetelem, tablesetelem
+    add, sub, mul,
+    divide, mod,/*cant use div*/ tablecreate,
+    tablegetelem, tablesetelem, assign,
+    uminus, jump, if_eq,
+    if_noteq, if_greater, if_greatereq,
+    if_less, if_lesseq, not,
+    or, and, param,  call,
+    getretval, funcstart, ret,
+    funcend
 } iopcode;
 
 
 //Will be used to make print easier(gia na glytwsoume ta polla if else sthn print_quads...arkei na kanoyme swsto indexing)
 char *iopcode_to_string[] = {
-    "assign", "add", "sub",
-    "mul", "div", "mod",
-    "uminus", "and", "or",
-    "not", "if_eq", "if_noteq",
-    "if_lesseq", "if_greatereq", "if_less",
-    "if_greater", "call", "param",
-    "return", "getretval",  "funcstart",
-    "funcend", "tablecreate", "jump",
-    "tablegetelem", "tablesetelem"
+    "add", "sub", "mul",
+    "div", "mod", "tablecreate",
+    "tablegetelem", "tablesetelem", "assign",
+    "uminus", "jump", "if_eq",
+    "if_noteq", "if_greater", "if_greatereq",
+    "if_less", "if_lesseq", "not",
+    "or","and", "param",  "call",
+    "getretval", "funcstart", "return",
+    "funcend"
 };
 
 //from lectures
@@ -474,6 +473,10 @@ symrec* newtemp(){
         rec = lookup_scope(new_temp_name,currentscope);
         return rec;
     }
+    //Temps need space and offset??
+    rec->space = currscopespace();
+    rec->offset = currscopeoffset();
+    incurrscopeoffset();
     return rec;
 }
 
