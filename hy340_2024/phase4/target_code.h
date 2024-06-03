@@ -18,7 +18,7 @@ typedef enum vmopcode{
     not_v, if_eq_v, if_noteq_v,
     if_lesseq_v, if_greatereq_v, if_less_v,
     if_greater_v, call_v, pusharg_v,
-    getretval_v,  funcstart_v,
+    funcstart_v,
     funcend_v, tablecreate_v, jump_v,
     nop_v,  tablegetelem_v, tablesetelem_v
 } vmopcode;
@@ -43,7 +43,7 @@ const char* vmopcode_to_string[] = {
     "assign_v", "add_v", "sub_v", "mul_v", "div_v", "mod_v",
     "uminus_v", "and_v", "or_v", "not_v", "if_eq_v", "if_noteq_v",
     "if_lesseq_v", "if_greatereq_v", "if_less_v", "if_greater_v",
-    "call_v", "pusharg_v", "getretval_v", "funcstart_v", "funcend_v",
+    "call_v", "pusharg_v","funcstart_v", "funcend_v",
     "tablecreate_v", "jump_v", "nop_v", "tablegetelem_v", "tablesetelem_v"
 };
 
