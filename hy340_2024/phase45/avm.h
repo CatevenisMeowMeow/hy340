@@ -51,6 +51,7 @@ avm_memcell ax,bx,cx,retval;
 unsigned _top,topsp;
 
 avm_memcell stack[AVM_STACKSIZE];
+
 static void avm_initstack(){
     for(unsigned i = 0; i<AVM_STACKSIZE; i++){
         AVM_WIPEOUT(stack[i]);
@@ -60,6 +61,8 @@ static void avm_initstack(){
 
 
 #define AVM_TABLE_HASHSIZE 211
+
+#define AVM_TOTAL_LIBFUNCS 12
 
 typedef void (*execute_func_t)(instruction*);
 typedef void (*library_func_t)(void);
@@ -71,6 +74,16 @@ typedef unsigned char (*tobool_func_t)(avm_memcell*);
 
 typedef double (*arithmetic_func_t)(double x, double y);
 typedef unsigned char (*cmp_func)(double x, double y);
+
+
+//A library function map
+typedef struct library_func_map{
+    char* id;
+    library_func_t address;
+}library_func_map;
+
+library_func_map libmap[AVM_TOTAL_LIBFUNCS];
+unsigned int curr_lib_func = 0;
 
 
 //For arithmetics
@@ -106,11 +119,12 @@ unsigned char jle_impl(double x, double y){return x<=y;}
 unsigned char jlt_impl(double x, double y){return x<y;}
 
 cmp_func comparizonFuncs[] = {
-    jge_impl,
-    jgt_impl,
     jle_impl,
-    jlt_impl
+    jge_impl,
+    jlt_impl,
+    jgt_impl
 };
+
 
 
 
@@ -159,10 +173,12 @@ extern void execute_funcenter(instruction*);
 extern void execute_funcexit(instruction*);
 
 extern void execute_newtable(instruction*);
+extern void execute_jmp(instruction*);
 extern void execute_tablegetelem(instruction*);
 extern void execute_tablesetelem(instruction*);
 
 extern void execute_nop(instruction*);
+
 
 execute_func_t executeFuncs[] = {
     execute_assign,
@@ -186,9 +202,10 @@ execute_func_t executeFuncs[] = {
     execute_funcenter,
     execute_funcexit,
     execute_newtable,
+    execute_jmp, //It was missing from lectures
+    execute_nop,
     execute_tablegetelem,
-    execute_tablesetelem,
-    execute_nop
+    execute_tablesetelem
 };
 
 extern userfunc* avm_getfuncinfo(unsigned address);
@@ -343,6 +360,33 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg);
 
 void execute_cycle();
 
+void avm_load_instructions(const char* filename);
+
+void avm_load_instructions(const char* filename) {
+    FILE* file = fopen(filename, "rb");
+    if (!file) {
+        perror("Failed to open file");
+        exit(1);
+    }
+
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
+
+    codeSize = file_size / sizeof(instruction);
+    code = (instruction*)malloc(codeSize * sizeof(instruction));
+
+    if (fread(code, sizeof(instruction), codeSize, file) != codeSize) {
+        perror("Failed to read instructions");
+        fclose(file);
+        free(code);
+        exit(1);
+    }
+
+    fclose(file);
+}
+
+
 
 void avm_initialize(){
     avm_initstack();
@@ -419,38 +463,57 @@ void libfunc_strtonum(){
 }
 
 void libfunc_sqrt(){
-
+    avm_memcell *m = avm_getactual(0);
+    assert(m);
+    assert(m->type == number_m);
+    m->data.numVal = sqrt(m->data.numVal);
 }
 
 void libfunc_cos(){
-
+    avm_memcell *m = avm_getactual(0);
+    assert(m);
+    assert(m->type == number_m);
+    m->data.numVal = cos(m->data.numVal);
 }
 
 void libfunc_sin(){
+    avm_memcell *m = avm_getactual(0);
+    assert(m);
+    assert(m->type == number_m);
+    m->data.numVal = sin(m->data.numVal);
 
 }
 
 void avm_registerlibfunc(char* id, library_func_t addr){
-
+    assert(curr_lib_func < AVM_TOTAL_LIBFUNCS);
+    libmap[curr_lib_func].id = malloc(sizeof(char*));
+    strcpy(libmap[curr_lib_func].id, id);
+    libmap[curr_lib_func].address = addr;
+    curr_lib_func++;
 }
 
-double consts_getnumber(unsigned index){
 
+
+double consts_getnumber(unsigned index){
+    assert(index <= totalNumConsts);
+    return numConsts[index];
 }
 
 char* consts_getstring(unsigned index){
+    assert(index <= totalStringConsts);
+    return stringConsts[index];
 
 }
 
 char* libfuncs_getused(unsigned index){
-
+    assert(index < totalNamedLibFuncs);
+    return namedLibFuncs[index];
 }
 
 userfunc* userfuncs_getfunc(unsigned index){
-
+    assert(index <= totalUserFuncs);
+    return &userFuncs[index];
 }
-
-
 
 
 void avm_warning(char* format){
@@ -459,6 +522,7 @@ void avm_warning(char* format){
 
 void avm_error(char* err){
     fprintf(stderr,"Error: %s\n",err);
+    executionFinished = 1;
 }
 
 void avm_dec_top(){
@@ -504,12 +568,43 @@ extern void avm_call_functor(avm_table* t){
     
 }
 
-//TODO
 extern userfunc* avm_getfuncinfo(unsigned address){
-
+    for(unsigned i = 0; i < totalUserFuncs; i++){
+        if(userFuncs[i].address == address){
+            return &userFuncs[i];
+        }
+    }
+    return NULL;
 }
 
+//TODO
+
+/*
+typedef struct avm_table_bucket{
+    avm_memcell key;
+    avm_memcell value;
+    struct avm_table_bucket* next;
+} avm_table_bucket;
+
+//from lectures
+typedef struct avm_table{
+    unsigned refCounter;
+    avm_table_bucket* strIndexed[AVM_TABLE_HASHSIZE];
+    avm_table_bucket* numIndexed[AVM_TABLE_HASHSIZE];
+    //Bonus if implement other vars support
+    unsigned total;
+} avm_table;*/
+
 avm_memcell* avm_tablegetelem(avm_table* table, avm_memcell* index){
+    /*assert(table);
+    assert(index);
+    if(index->type == number_m){
+        for(unsigned i = 0;i<AVM_TABLE_HASHSIZE;i++){
+            if(table->numIndexed[i]->key == index->data.numVal){
+                return table->numIndexed[i]->va
+            }
+        } 
+    }*/
 
 }
 
@@ -679,7 +774,7 @@ void execute_not(instruction *instr){
 }
 
 void execute_nop(instruction *instr){
-
+ //Do nothing???
 }
 
 void execute_assign(instruction* instr){
@@ -829,7 +924,7 @@ void execute_cmp(instruction* instr){
         executionFinished = 1;
     }
     else{
-        cmp_func op = comparizonFuncs[instr->opcode - if_greatereq_v];
+        cmp_func op = comparizonFuncs[instr->opcode - if_lesseq_v];
         avm_memcellclear(lv);
         lv->type = bool_m;
         lv->data.boolVal = (*op)(rv1->data.numVal, rv2->data.numVal);
@@ -837,6 +932,11 @@ void execute_cmp(instruction* instr){
 
 }
 
+void execute_jmp(instruction* instr){
+    assert(instr->result.type == label_a);
+    if(!executionFinished)
+        pc = instr->result.val;
+}
 
 void execute_jeq(instruction *instr){
     assert(instr->result.type == label_a);
