@@ -228,8 +228,7 @@ unsigned consts_newstring(char* s){
     stringConsts[totalStringConsts] = malloc(strlen(s) + 1);
     assert(stringConsts[totalStringConsts]);
     strcpy(stringConsts[totalStringConsts], s);
-    totalStringConsts++;
-    return totalStringConsts;
+    return totalStringConsts++;
 }
 
 unsigned consts_newnumber(double n){
@@ -237,8 +236,7 @@ unsigned consts_newnumber(double n){
     assert(temp);
     numConsts = temp;
     numConsts[totalNumConsts] = n;
-    totalNumConsts++;
-    return totalNumConsts;
+    return totalNumConsts++;
 
 }
 //similar to consts_newstring...
@@ -249,8 +247,7 @@ unsigned libfuncs_newused(char* s){
     namedLibFuncs[totalNamedLibFuncs] = malloc(strlen(s) + 1);
     assert(namedLibFuncs[totalNamedLibFuncs]);
     strcpy(namedLibFuncs[totalNamedLibFuncs], s);
-    totalNamedLibFuncs++;
-    return totalNamedLibFuncs;
+    return totalNamedLibFuncs++;
 
 }
 
@@ -264,8 +261,7 @@ unsigned userfuncs_newfunc(symrec* sym){
     strcpy(userFuncs[totalUserFuncs].id, sym->name);
     userFuncs[totalUserFuncs].address = sym->taddress;
     userFuncs[totalUserFuncs].localSize = sym->totalLocals;
-    totalUserFuncs++;
-    return totalUserFuncs;
+    return totalUserFuncs++;
 }
 
 
@@ -364,7 +360,7 @@ void make_operand(expr* e, vmarg* arg){
         case nil_e: {arg->type = nil_a; break;}
         case programfunc_e:{
             arg->type = userfunc_a;
-            arg->val = e->sym->taddress;
+            arg->val = userfuncs_newfunc(e->sym);
             break;
         }
         case libraryfunc_e:{
@@ -609,6 +605,8 @@ void generate_PARAM(quad *q){
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = pusharg_v;
      t->srcLine = q->line;
+    t->result.type = nil_a;
+    t->result.val = 0;
     make_operand(q->arg1, &t->arg1);
     //What if arg2 is not used??? Make arg2 as nil????????
     t->arg2.type = nil_a;
@@ -618,9 +616,13 @@ void generate_PARAM(quad *q){
 
 void generate_CALL(quad *q){
     q->taddress = nextinstructionlabel();
+    
+    printf("%u\n",q->taddress);
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = call_v;
-     t->srcLine = q->line;
+    t->srcLine = q->line;
+    t->result.type = nil_a;
+    t->result.val = 0;
     make_operand(q->arg1, &t->arg1);
     //What if arg2 is not used??? Make arg2 as nil????????
     t->arg2.type = nil_a;
@@ -632,7 +634,7 @@ void generate_GETRETVAL(quad *q){
     q->taddress = nextinstructionlabel();
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = assign_v;
-     t->srcLine = q->line;
+    t->srcLine = q->line;
     make_operand(q->result, &t->result);
     make_retvaloperand(&t->arg1);
     //What if arg2 is not used??? Make arg2 as nil????????
@@ -649,7 +651,7 @@ void generate_FUNCSTART(quad *q){
     push_functionstack(f);
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = funcstart_v;
-     t->srcLine = q->line;
+    t->srcLine = q->line;
     make_operand(q->result, &t->result);
     //What if arg2, arg1 is not used??? Make arg2 as nil????????
     t->arg1.type = nil_a;
@@ -782,6 +784,7 @@ void print_instructions_vals() {
         printf("\n");
     }
 }
+
 
 
 //Binary output

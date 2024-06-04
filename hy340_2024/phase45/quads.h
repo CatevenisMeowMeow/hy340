@@ -286,7 +286,7 @@ expr* make_call(expr* lv, expr* reversed_elist, int line) {
         emit(param, NULL, reversed_elist, NULL,0,line);
         reversed_elist = reversed_elist->next;
     }
-    emit(call, func,NULL,NULL,0,line);
+    emit(call, NULL,func,NULL,0,line);
     expr* result = newexpr_type(var_e);
     result->sym = newtemp();
     emit(getretval,result,NULL,NULL,0,line);
@@ -474,9 +474,9 @@ symrec* newtemp(){
         return rec;
     }
     //Temps need space and offset??
-    rec->space = currscopespace();
-    rec->offset = currscopeoffset();
-    incurrscopeoffset();
+    //rec->space = currscopespace();
+    //rec->offset = currscopeoffset();
+    //incurrscopeoffset();
     return rec;
 }
 
@@ -703,5 +703,6 @@ void print_quads() {
                 break;
         }
     }
+
     printf("\n---------------------------------------------------------------------------------------\n");
 }

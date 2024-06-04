@@ -860,24 +860,27 @@ int main( int argc, char** argv) {
         //print_symbol_table();
 
         //3h fash
-        //print_quads();
+        print_quads();
 
         //4h fash
         generate_all();
-       // print_instructions();
-        //print_instructions_vals();
+        print_instructions();
+        print_instructions_vals();
         print_binary_instructions(f);
 
         //5h fash //TODO
         avm_initialize();
         avm_load_instructions("target_code");
-        printf("Starting avm execution...\n\n");
+        printf("\nStarting avm execution...\n\n");
+
         unsigned int cycle_count = 0; //for debugging
         while(executionFinished != 1){
                 printf("Cycle #%u: ",cycle_count);//for debugging
+                print_curr_instr(); //for debugging
                 execute_cycle();
                 cycle_count++;//for debugging
         }
         printf("\n\nexecution finished!\n");
+
         return 0;
 }

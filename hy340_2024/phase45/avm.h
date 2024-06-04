@@ -1,6 +1,8 @@
 #include "target_code.h"
 #include <math.h>
 
+extern void avm_warning(char* format);
+extern void avm_error(char* err);
 
 //from lectures
 unsigned char executionFinished = 0;
@@ -96,7 +98,7 @@ unsigned int curr_lib_func = 0;
 double add_impl(double x, double y){return x+y;}
 double sub_impl(double x, double y){return x-y;}
 double mul_impl(double x, double y){return x*y;}
-double div_impl(double x, double y){return x/y;}
+double div_impl(double x, double y){if(y == 0) avm_error("Division by zero!!!"); return x/y;}
 double mod_impl(double x, double y){ return ((unsigned) x) % ((unsigned) y); }
 
 arithmetic_func_t arithmeticFuncs[] = {
@@ -124,8 +126,6 @@ cmp_func comparizonFuncs[] = {
     jlt_impl,
     jgt_impl
 };
-
-
 
 
 #define AVM_MAX_INSTRUCTIONS (unsigned) nop_v
@@ -210,11 +210,11 @@ execute_func_t executeFuncs[] = {
 
 extern userfunc* avm_getfuncinfo(unsigned address);
 
-extern void avm_warning(char* format);
-extern void avm_error(char* err);
+
 extern void avm_assign(avm_memcell* lv, avm_memcell* rv);
 
 extern char* avm_tostring(avm_memcell*);
+library_func_t avm_getlibraryfunc(char *id);
 extern void avm_callibfunc(char* funcName);
 extern void avm_callsaveenvironment();
 extern void avm_call_functor(avm_table* t);
@@ -363,6 +363,11 @@ void execute_cycle();
 void avm_load_instructions(const char* filename);
 
 void avm_load_instructions(const char* filename) {
+    //proswrinh lysh
+    code = instructions;
+    codeSize = currInstruction;
+    //TODO
+    /*
     FILE* file = fopen(filename, "rb");
     if (!file) {
         perror("Failed to open file");
@@ -382,8 +387,8 @@ void avm_load_instructions(const char* filename) {
         free(code);
         exit(1);
     }
-
-    fclose(file);
+    printf("total instructions: %u\n",codeSize);
+    fclose(file);*/
 }
 
 
@@ -481,7 +486,6 @@ void libfunc_sin(){
     assert(m);
     assert(m->type == number_m);
     m->data.numVal = sin(m->data.numVal);
-
 }
 
 void avm_registerlibfunc(char* id, library_func_t addr){
@@ -517,11 +521,11 @@ userfunc* userfuncs_getfunc(unsigned index){
 
 
 void avm_warning(char* format){
-    printf("Warning: %s\n",format);
+    printf("AVM warning: %s\n",format);
 }
 
 void avm_error(char* err){
-    fprintf(stderr,"Error: %s\n",err);
+    fprintf(stderr,"AVM error: %s\n",err);
     executionFinished = 1;
 }
 
@@ -702,7 +706,7 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg){
     switch(arg->type){
         case global_a: return &stack[AVM_STACKSIZE-1-arg->val];
         case local_a: return &stack[topsp-arg->val];
-        case formal_a: return &stack[topsp+AVM_STACKENV_SIZE+1+arg->val];
+        case formal_a: return &stack[topsp + AVM_STACKENV_SIZE + 1 + arg->val];
         case retval_a: return &retval;
         case number_a:{
             reg->type = number_m;
@@ -731,7 +735,7 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg){
             reg->data.libfuncVal = libfuncs_getused(arg->val);
             return reg;
         }
-        default: assert(0);
+        default: break; //What with labels???
     }
 
 }
@@ -801,7 +805,7 @@ void avm_assign(avm_memcell* lv, avm_memcell* rv){
 }
 
 void execute_call(instruction *instr){
-    avm_memcell* func = avm_translate_operand(&instr->result, &ax);
+    avm_memcell* func = avm_translate_operand(&instr->arg1, &ax);
     assert(func);
     switch(func->type){
         case userfunc_m:{
@@ -851,8 +855,20 @@ void execute_funcexit(instruction* unused){
         avm_memcellclear(&stack[oldTop]);
 }
 
+//Not very efficient when we have like hundrends of libfuncs. But for 12 it works fine
+library_func_t avm_getlibraryfunc(char *id){
+    unsigned int tmp = 0;
+    while(tmp < AVM_TOTAL_LIBFUNCS){
+        if(strcmp(libmap[tmp].id, id) == 0){
+            return libmap[tmp].address;
+        }
+        tmp++;
+    }
+    avm_error("Library function not found!!");
+}
+
 void avm_callibfunc(char* id){
-    library_func_t f; //TODO... = avm_getlibraryfunc(id);
+    library_func_t f = avm_getlibraryfunc(id);
     if(!f){
         avm_error("unsupported lib func called!");
         executionFinished = 1;
@@ -913,22 +929,22 @@ void execute_arithmetic(instruction* instr){
 }
 
 void execute_cmp(instruction* instr){
-    avm_memcell* lv = avm_translate_operand(&instr->result, (avm_memcell*)0);
+    avm_memcell* lv; //= avm_translate_operand(&instr->result, (avm_memcell*)0);
     avm_memcell* rv1 = avm_translate_operand(&instr->arg1, &ax);
     avm_memcell* rv2 = avm_translate_operand(&instr->arg2, &bx);
 
-    assert(lv && (&stack[AVM_STACKSIZE/*????*/ - 1] >= lv && lv > &stack[_top] || lv == &retval));
+   //assert(lv && (&stack[AVM_STACKSIZE/*????*/ - 1] >= lv && lv > &stack[_top] || lv == &retval));
     assert(rv1 && rv2);
-    if(rv1->type != number_m || rv2->type != number_m){
+   /* if(rv1->type != number_m || rv2->type != number_m){
         avm_error("not a number in comparizon!");
         executionFinished = 1;
     }
-    else{
+    else{*/
         cmp_func op = comparizonFuncs[instr->opcode - if_lesseq_v];
         avm_memcellclear(lv);
         lv->type = bool_m;
         lv->data.boolVal = (*op)(rv1->data.numVal, rv2->data.numVal);
-    }
+   // }
 
 }
 
@@ -1032,5 +1048,18 @@ void execute_tablesetelem(instruction* instr){
         avm_error("illegal use as table!");
     else
         avm_tablesetelem(t->data.tableVal, i, c);
+
+}
+
+void print_curr_instr(){
+    printf("%s   ",vmopcode_to_string[code[pc].opcode]);
+    if(code[pc].result.type != nil_a)
+        printf("%u  ", code[pc].result.val);
+    if(code[pc].arg1.type != nil_a)
+        printf("%u  ", code[pc].arg1.val);
+    if(code[pc].arg2.type != nil_a)
+        printf("%u  ", code[pc].arg2.val);
+    printf("[line: %d]",code[pc].srcLine);
+    printf("\n");
 
 }
