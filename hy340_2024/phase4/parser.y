@@ -292,7 +292,7 @@ term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS{$$ = $2;}
         ;
 assignexpr: lvalue{    
                        
-                       if($1 == NULL){
+                     /*  if($1 == NULL){
                                 if(scope == 0)
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                 else
@@ -302,7 +302,7 @@ assignexpr: lvalue{
                                 tmp->space = currscopespace();
                                 tmp->offset = currscopeoffset();
                                 incurrscopeoffset();
-                        }
+                        }*/
                 } 
                 ASSIGN expr{  
                                 
@@ -321,7 +321,7 @@ assignexpr: lvalue{
             ;
 
 primary:    lvalue {
-                        if($1 == NULL){
+                      /*  if($1 == NULL){
                                 if(scope == 0)
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                 else
@@ -331,7 +331,7 @@ primary:    lvalue {
                                 tmp->space = currscopespace();
                                 tmp->offset = currscopeoffset();
                                 incurrscopeoffset();
-                        }
+                        }*/
                         $$ = emit_iftableitem($1);
         }
             | call {$$ = $1;}
@@ -633,7 +633,7 @@ funcprefix: FUNCTION funcname{
 
 const:  CONST_REAL{$$ = newexpr_numConst(yylval.double_val);} 
         | CONST_INT {$$ = newexpr_numConst(yylval.int_val);}
-        | STRING {$$ = newexpr_strConst(yylval.str_val);} 
+        | STRING {$$ = newexpr_strConst(yylval.str_val); } 
         | NIL {$$ = newexpr_type(nil_e);} 
         | TRUE {$$ = newexpr_boolConst(1);} 
         | FALSE {$$ = newexpr_boolConst(0);} 
@@ -860,29 +860,28 @@ int main( int argc, char** argv) {
         //print_symbol_table();
 
         //3h fash
-        //print_quads();
+        print_quads();
 
         //4h fash
         generate_all();
-        printf("Printing instruction types:\n");
         print_instructions();
-        printf("------------------------------------------\n");
-        printf("\nPrinting instruction vals(offset):\n");
         print_instructions_vals();
-        printf("\nWriting to a binary file...\n");
         print_binary_instructions(f);
-        printf("Completed!\n");
-
+        fclose(f);
+        
         //5h fash //TODO
-       // avm_initialize();
-       // avm_load_instructions("target_code");
-       // printf("Starting avm execution...\n\n");
-        //unsigned int cycle_count = 0; //for debugging
-       // while(executionFinished != 1){
-      //          printf("Cycle #%u: ",cycle_count);//for debugging
-       //         execute_cycle();
-       //         cycle_count++;//for debugging
-       // }
-       // printf("\n\nexecution finished!\n");
+        /*avm_initialize();
+        avm_load_instructions("target_code");
+        printf("\nStarting avm execution...\n\n");
+
+        unsigned int cycle_count = 0; //for debugging
+        while(executionFinished != 1){
+                printf("Cycle #%u: ",cycle_count);//for debugging
+                print_curr_instr(); //for debugging
+                execute_cycle();
+                cycle_count++;//for debugging
+        }
+        printf("\n\nexecution finished!\n");*/
+        
         return 0;
 }

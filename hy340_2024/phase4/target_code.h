@@ -227,9 +227,9 @@ unsigned consts_newstring(char* s){
     stringConsts = temp;
     stringConsts[totalStringConsts] = malloc(strlen(s) + 1);
     assert(stringConsts[totalStringConsts]);
-    strcpy(stringConsts[totalStringConsts], s);
-    totalStringConsts++;
-    return totalStringConsts;
+    //strcpy(stringConsts[totalStringConsts], s);
+    stringConsts[totalStringConsts] = strdup(s);
+    return totalStringConsts++;
 }
 
 unsigned consts_newnumber(double n){
@@ -237,8 +237,7 @@ unsigned consts_newnumber(double n){
     assert(temp);
     numConsts = temp;
     numConsts[totalNumConsts] = n;
-    totalNumConsts++;
-    return totalNumConsts;
+    return totalNumConsts++;
 
 }
 //similar to consts_newstring...
@@ -249,8 +248,7 @@ unsigned libfuncs_newused(char* s){
     namedLibFuncs[totalNamedLibFuncs] = malloc(strlen(s) + 1);
     assert(namedLibFuncs[totalNamedLibFuncs]);
     strcpy(namedLibFuncs[totalNamedLibFuncs], s);
-    totalNamedLibFuncs++;
-    return totalNamedLibFuncs;
+    return totalNamedLibFuncs++;
 
 }
 
@@ -264,8 +262,7 @@ unsigned userfuncs_newfunc(symrec* sym){
     strcpy(userFuncs[totalUserFuncs].id, sym->name);
     userFuncs[totalUserFuncs].address = sym->taddress;
     userFuncs[totalUserFuncs].localSize = sym->totalLocals;
-    totalUserFuncs++;
-    return totalUserFuncs;
+    return totalUserFuncs++;
 }
 
 
@@ -275,7 +272,7 @@ void resetoperand(vmarg *a){
     a = (vmarg*)0;
 }
 
-//from lectures //TODO complete cases
+//from lectures 
 void make_operand(expr* e, vmarg* arg){
     if(e == NULL){
         arg->type = nil_a;
@@ -364,7 +361,7 @@ void make_operand(expr* e, vmarg* arg){
         case nil_e: {arg->type = nil_a; break;}
         case programfunc_e:{
             arg->type = userfunc_a;
-            arg->val = e->sym->taddress;
+            arg->val = userfuncs_newfunc(e->sym);
             break;
         }
         case libraryfunc_e:{
@@ -486,7 +483,7 @@ void generate_relational(vmopcode op, quad *q){
     make_operand(q->arg2, &t->arg2);
     t->result.type = label_a;
     if(q->label < currQuad){
-        t->result.val = quads[q->label].taddress;
+        t->result.val = quads[q->label].label;
     }
     else{
         add_incomplete_jump(nextinstructionlabel(), q->label);
@@ -494,7 +491,19 @@ void generate_relational(vmopcode op, quad *q){
     q->taddress = nextinstructionlabel();
     emit_instruction(t);
 }
-void generate_JUMP(quad *q){ generate_relational(jump_v, q); }
+
+void generate_JUMP(quad *q){ 
+    generate_relational(jump_v, q);
+   /* instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = jump_v;
+    t->srcLine = q->line;
+    t->result.type = label_a;
+    t->result.val = q->label;
+    t->arg1.type = t->arg2.type = nil_a;
+    t->arg1.val = t->arg2.val = 0;
+    emit_instruction(t);*/
+
+}
 void generate_IF_EQ(quad *q){ generate_relational(if_eq_v, q);}
 void generate_IF_NOTEQ(quad *q){ generate_relational(if_noteq_v, q);}
 void generate_IF_GREATER(quad *q){ generate_relational(if_greater_v, q);}
@@ -609,6 +618,8 @@ void generate_PARAM(quad *q){
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = pusharg_v;
      t->srcLine = q->line;
+    t->result.type = nil_a;
+    t->result.val = 0;
     make_operand(q->arg1, &t->arg1);
     //What if arg2 is not used??? Make arg2 as nil????????
     t->arg2.type = nil_a;
@@ -620,7 +631,9 @@ void generate_CALL(quad *q){
     q->taddress = nextinstructionlabel();
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = call_v;
-     t->srcLine = q->line;
+    t->srcLine = q->line;
+    t->result.type = nil_a;
+    t->result.val = 0;
     make_operand(q->arg1, &t->arg1);
     //What if arg2 is not used??? Make arg2 as nil????????
     t->arg2.type = nil_a;
@@ -632,7 +645,7 @@ void generate_GETRETVAL(quad *q){
     q->taddress = nextinstructionlabel();
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = assign_v;
-     t->srcLine = q->line;
+    t->srcLine = q->line;
     make_operand(q->result, &t->result);
     make_retvaloperand(&t->arg1);
     //What if arg2 is not used??? Make arg2 as nil????????
@@ -649,7 +662,7 @@ void generate_FUNCSTART(quad *q){
     push_functionstack(f);
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = funcstart_v;
-     t->srcLine = q->line;
+    t->srcLine = q->line;
     make_operand(q->result, &t->result);
     //What if arg2, arg1 is not used??? Make arg2 as nil????????
     t->arg1.type = nil_a;
@@ -739,7 +752,7 @@ generator_func_t generators[] = {
 void generate_all(){
     for(unsigned i = 0; i<currQuad; ++i)
         (*generators[quads[i].op])(quads + i);
-    
+    patch_incomplete_jumps();
 }
 
 
@@ -784,11 +797,11 @@ void print_instructions_vals() {
 }
 
 
+
 //Binary output
 void print_binary_instructions(FILE* file) {
     for (unsigned int i = 0; i < currInstruction; i++) {
         instruction inst = instructions[i];
-
         // Write the command code
         fwrite(&inst.opcode, sizeof(vmopcode), 1, file);
 
@@ -805,4 +818,5 @@ void print_binary_instructions(FILE* file) {
         // Write the source code line number if necessary
         fwrite(&inst.srcLine, sizeof(unsigned), 1, file);
     }
+    
 }
