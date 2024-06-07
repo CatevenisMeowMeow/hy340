@@ -293,37 +293,6 @@ expr* make_call(expr* lv, expr* reversed_elist, int line) {
     return result;
 }
 
-//from lectures(added line because it is required for emit and quads)
-/*expr* make_call(expr* lv, expr* reversed_elist, int line) {
-    expr* func = emit_iftableitem(lv);
-    expr_stack *s = malloc(sizeof(struct expr_stack));
-    s->e = reversed_elist;
-    s->next = NULL;
-    expr_stack *head = s;
-    //push in stack
-    while (reversed_elist){
-        reversed_elist = reversed_elist->next;
-        if(reversed_elist == NULL) break;
-        expr_stack *tmp = malloc(sizeof(struct expr_stack));
-        tmp->e = reversed_elist;
-        tmp->next = s;
-        s = tmp;
-      
-    }
-    //pop from stack
-    while (s && s->e) {
-        emit(param, NULL, s->e, NULL,0,line);
-        s = s->next;
-    }
-   
-    emit(call, NULL,func,NULL,0,line);
-    expr* result = newexpr_type(var_e);
-    result->sym = newtemp();
-    emit(getretval,result,NULL,NULL,0,line);
-    return result;
-}*/
-
-
 
 //function to add to the elist a new expr(usefull for calls or for stmts)
 void add_to_expr_list(expr* elist,expr *e){

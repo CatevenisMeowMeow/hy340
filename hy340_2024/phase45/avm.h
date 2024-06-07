@@ -364,14 +364,8 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg);
 
 void execute_cycle();
 
-void avm_load_instructions(const char* filename);
 
 void avm_load_instructions(const char* filename) {
-    //proswrinh lysh
-    code = instructions;
-    codeSize = currInstruction;
-    //TODO
-    /*
     FILE* file = fopen(filename, "rb");
     if (!file) {
         perror("Failed to open file");
@@ -384,16 +378,17 @@ void avm_load_instructions(const char* filename) {
 
     codeSize = file_size / sizeof(instruction);
     code = (instruction*)malloc(codeSize * sizeof(instruction));
-
     if (fread(code, sizeof(instruction), codeSize, file) != codeSize) {
         perror("Failed to read instructions");
         fclose(file);
         free(code);
         exit(1);
     }
-    printf("total instructions: %u\n",codeSize);
-    fclose(file);*/
+    codeSize--;
+    fclose(file);
 }
+
+
 //DEBUGGING Function to remove quotes that SOMEHOW strings have!!!!
 void remove_quotes(char *str) {
     char *src = str, *dst = str;
@@ -404,7 +399,7 @@ void remove_quotes(char *str) {
         }
         src++;
     }
-    *dst = '\0';  // Null-terminate the string
+    *dst = '\0';  //terminate the string
 }
 
 
@@ -483,8 +478,6 @@ void libfunc_strtonum(){
     assert(m);
     assert(m->type == string_m);
     char* s = m->data.strVal;
-   // if(strlen(s) == 0)
-       // avm_error("Expected string lenght > 0 at strtonum");
     remove_quotes(s); //SOMEHOW strings have quotes inside that make atof return zero!!!!!
     retval.type = number_m;
     retval.data.numVal = atof(s);
@@ -734,7 +727,7 @@ void avm_tabledestroy(avm_table* t){
 
 
 avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg){
-    switch(arg->type){
+    switch(arg->type){ 
         case global_a: return &stack[AVM_STACKSIZE - 1 - arg->val];
         case local_a: return &stack[topsp - arg->val];
         case formal_a: return &stack[topsp + AVM_STACKENV_SIZE + 1 + arg->val];
@@ -774,7 +767,7 @@ avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg){
 void execute_cycle(){
     if(executionFinished)
         return;
-    else if(pc == AVM_ENDING_PC){
+    else if(pc >= AVM_ENDING_PC){
         executionFinished = 1;
         return;
     }
@@ -791,7 +784,7 @@ void execute_cycle(){
     }
 }
 
-//TODO
+
 void execute_uminus(instruction *instr){
 
 }
@@ -977,15 +970,18 @@ void execute_cmp(instruction* instr){
         cmp_func op = comparizonFuncs[instr->opcode - if_lesseq_v];
         result = (*op)(rv1->data.numVal, rv2->data.numVal);
     }
-    if(!executionFinished && result)
+    if(!executionFinished && result){
         pc = instr->result.val;
+    }
+
 
 }
 
 void execute_jmp(instruction* instr){
     assert(instr->result.type == label_a);
-    if(!executionFinished)
+    if(!executionFinished){
         pc = instr->result.val;
+    }
 }
 
 void execute_jeq(instruction *instr){
@@ -1015,8 +1011,9 @@ void execute_jeq(instruction *instr){
             default: assert(0);
         }
     }
-    if(!executionFinished && result)
+    if(!executionFinished && result){
         pc = instr->result.val;
+    }
 }
 
 void execute_jne(instruction *instr){
@@ -1045,8 +1042,9 @@ void execute_jne(instruction *instr){
             default: assert(0);
         }
     }
-    if(!executionFinished && result)
+    if(!executionFinished && result){
         pc = instr->result.val;
+    }
 }
 
 

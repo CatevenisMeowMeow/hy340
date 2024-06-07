@@ -802,7 +802,6 @@ void print_instructions_vals() {
 void print_binary_instructions(FILE* file) {
     for (unsigned int i = 0; i < currInstruction; i++) {
         instruction inst = instructions[i];
-
         // Write the command code
         fwrite(&inst.opcode, sizeof(vmopcode), 1, file);
 
@@ -819,4 +818,5 @@ void print_binary_instructions(FILE* file) {
         // Write the source code line number if necessary
         fwrite(&inst.srcLine, sizeof(unsigned), 1, file);
     }
+    
 }

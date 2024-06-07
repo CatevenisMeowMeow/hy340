@@ -867,8 +867,9 @@ int main( int argc, char** argv) {
         print_instructions();
         print_instructions_vals();
         print_binary_instructions(f);
-
-        //5h fash //TODO
+        fclose(f);
+        
+        //5h fash 
         avm_initialize();
         avm_load_instructions("target_code");
         printf("\nStarting avm execution...\n\n");
@@ -881,6 +882,6 @@ int main( int argc, char** argv) {
                 cycle_count++;//for debugging
         }
         printf("\n\nexecution finished!\n");
-
+        
         return 0;
 }
