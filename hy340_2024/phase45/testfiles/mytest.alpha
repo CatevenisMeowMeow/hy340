@@ -1,0 +1,27 @@
+
+a = "aaaaa";
+b = "bbbbb";
+c = sqrt(25);
+print(c);
+
+//function f(){return 1;}
+
+print(typeof(a));
+print(typeof(3));
+print(typeof("string"));
+print(typeof(print));
+//print(typeof(f));
+//print(a);
+a = 1;
+while(a){
+    a = f(a);
+    if(a){
+        break;
+    }else{
+        continue;
+    }
+    continue;
+    break;
+    
+
+}

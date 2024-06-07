@@ -1,0 +1,7 @@
+work = input();
+if(work == "hard"){
+    print("pass lesson");
+}
+else{
+    print("fail");
+}
