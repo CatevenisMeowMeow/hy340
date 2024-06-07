@@ -227,7 +227,8 @@ unsigned consts_newstring(char* s){
     stringConsts = temp;
     stringConsts[totalStringConsts] = malloc(strlen(s) + 1);
     assert(stringConsts[totalStringConsts]);
-    strcpy(stringConsts[totalStringConsts], s);
+    //strcpy(stringConsts[totalStringConsts], s);
+    stringConsts[totalStringConsts] = strdup(s);
     return totalStringConsts++;
 }
 
@@ -271,7 +272,7 @@ void resetoperand(vmarg *a){
     a = (vmarg*)0;
 }
 
-//from lectures //TODO complete cases
+//from lectures 
 void make_operand(expr* e, vmarg* arg){
     if(e == NULL){
         arg->type = nil_a;
@@ -482,7 +483,7 @@ void generate_relational(vmopcode op, quad *q){
     make_operand(q->arg2, &t->arg2);
     t->result.type = label_a;
     if(q->label < currQuad){
-        t->result.val = quads[q->label].taddress;
+        t->result.val = quads[q->label].label;
     }
     else{
         add_incomplete_jump(nextinstructionlabel(), q->label);
@@ -490,7 +491,19 @@ void generate_relational(vmopcode op, quad *q){
     q->taddress = nextinstructionlabel();
     emit_instruction(t);
 }
-void generate_JUMP(quad *q){ generate_relational(jump_v, q); }
+
+void generate_JUMP(quad *q){ 
+    generate_relational(jump_v, q);
+   /* instruction *t = (instruction*)malloc(sizeof(instruction));
+    t->opcode = jump_v;
+    t->srcLine = q->line;
+    t->result.type = label_a;
+    t->result.val = q->label;
+    t->arg1.type = t->arg2.type = nil_a;
+    t->arg1.val = t->arg2.val = 0;
+    emit_instruction(t);*/
+
+}
 void generate_IF_EQ(quad *q){ generate_relational(if_eq_v, q);}
 void generate_IF_NOTEQ(quad *q){ generate_relational(if_noteq_v, q);}
 void generate_IF_GREATER(quad *q){ generate_relational(if_greater_v, q);}
@@ -616,8 +629,6 @@ void generate_PARAM(quad *q){
 
 void generate_CALL(quad *q){
     q->taddress = nextinstructionlabel();
-    
-    printf("%u\n",q->taddress);
     instruction *t = (instruction*)malloc(sizeof(instruction));
     t->opcode = call_v;
     t->srcLine = q->line;
@@ -741,7 +752,7 @@ generator_func_t generators[] = {
 void generate_all(){
     for(unsigned i = 0; i<currQuad; ++i)
         (*generators[quads[i].op])(quads + i);
-    
+    patch_incomplete_jumps();
 }
 
 

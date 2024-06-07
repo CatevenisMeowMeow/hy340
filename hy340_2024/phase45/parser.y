@@ -292,7 +292,7 @@ term:   LEFT_PARENTHESIS expr RIGHT_PARENTHESIS{$$ = $2;}
         ;
 assignexpr: lvalue{    
                        
-                       if($1 == NULL){
+                     /*  if($1 == NULL){
                                 if(scope == 0)
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                 else
@@ -302,7 +302,7 @@ assignexpr: lvalue{
                                 tmp->space = currscopespace();
                                 tmp->offset = currscopeoffset();
                                 incurrscopeoffset();
-                        }
+                        }*/
                 } 
                 ASSIGN expr{  
                                 
@@ -321,7 +321,7 @@ assignexpr: lvalue{
             ;
 
 primary:    lvalue {
-                        if($1 == NULL){
+                      /*  if($1 == NULL){
                                 if(scope == 0)
                                         insert(yylval.str_val, GLOBALVAR, yylineno, scope);
                                 else
@@ -331,7 +331,7 @@ primary:    lvalue {
                                 tmp->space = currscopespace();
                                 tmp->offset = currscopeoffset();
                                 incurrscopeoffset();
-                        }
+                        }*/
                         $$ = emit_iftableitem($1);
         }
             | call {$$ = $1;}
@@ -633,7 +633,7 @@ funcprefix: FUNCTION funcname{
 
 const:  CONST_REAL{$$ = newexpr_numConst(yylval.double_val);} 
         | CONST_INT {$$ = newexpr_numConst(yylval.int_val);}
-        | STRING {$$ = newexpr_strConst(yylval.str_val);} 
+        | STRING {$$ = newexpr_strConst(yylval.str_val); } 
         | NIL {$$ = newexpr_type(nil_e);} 
         | TRUE {$$ = newexpr_boolConst(1);} 
         | FALSE {$$ = newexpr_boolConst(0);} 

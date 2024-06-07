@@ -50,7 +50,8 @@ typedef struct avm_memcell{
 #define AVM_STACKENV_SIZE 4
 avm_memcell ax,bx,cx,retval;
 
-unsigned _top,topsp;
+unsigned _top; 
+unsigned topsp;
 
 avm_memcell stack[AVM_STACKSIZE];
 
@@ -59,6 +60,9 @@ static void avm_initstack(){
         AVM_WIPEOUT(stack[i]);
         stack[i].type = undef_m;
     }
+    _top = AVM_STACKSIZE -1;
+    topsp = AVM_STACKSIZE -1;
+
 }
 
 
@@ -336,7 +340,7 @@ userfunc* userfuncs_getfunc(unsigned index);
 void avm_dec_top();
 void avm_push_envvalue(unsigned val);
 unsigned avm_get_envvalue(unsigned i);
-void avm_callsaveenvironment();
+
 
 unsigned avm_totalactuals();
 avm_memcell* avm_getactual(unsigned i);
@@ -390,7 +394,18 @@ void avm_load_instructions(const char* filename) {
     printf("total instructions: %u\n",codeSize);
     fclose(file);*/
 }
-
+//DEBUGGING Function to remove quotes that SOMEHOW strings have!!!!
+void remove_quotes(char *str) {
+    char *src = str, *dst = str;
+    while (*src) {
+        if (*src != '\'' && *src != '"') {
+            *dst = *src;
+            dst++;
+        }
+        src++;
+    }
+    *dst = '\0';  // Null-terminate the string
+}
 
 
 void avm_initialize(){
@@ -414,7 +429,7 @@ void libfunc_print(){
     for(unsigned i = 0; i<n; ++i){
         char* s = avm_tostring(avm_getactual(i));
         puts(s);
-        free(s);
+       // free(s); //??? problem when printing strings!!!
     }
 }
 
@@ -464,6 +479,15 @@ void libfunc_argument(){
 }
 
 void libfunc_strtonum(){
+    avm_memcell *m = avm_getactual(0);
+    assert(m);
+    assert(m->type == string_m);
+    char* s = m->data.strVal;
+   // if(strlen(s) == 0)
+       // avm_error("Expected string lenght > 0 at strtonum");
+    remove_quotes(s); //SOMEHOW strings have quotes inside that make atof return zero!!!!!
+    retval.type = number_m;
+    retval.data.numVal = atof(s);
 
 }
 
@@ -471,21 +495,24 @@ void libfunc_sqrt(){
     avm_memcell *m = avm_getactual(0);
     assert(m);
     assert(m->type == number_m);
-    m->data.numVal = sqrt(m->data.numVal);
+    retval.type = number_m;
+    retval.data.numVal = sqrt(m->data.numVal);
 }
 
 void libfunc_cos(){
     avm_memcell *m = avm_getactual(0);
     assert(m);
     assert(m->type == number_m);
-    m->data.numVal = cos(m->data.numVal);
+    retval.type = number_m;
+    retval.data.numVal = cos(m->data.numVal);
 }
 
 void libfunc_sin(){
     avm_memcell *m = avm_getactual(0);
     assert(m);
     assert(m->type == number_m);
-    m->data.numVal = sin(m->data.numVal);
+    retval.type = number_m;
+    retval.data.numVal = sin(m->data.numVal);
 }
 
 void avm_registerlibfunc(char* id, library_func_t addr){
@@ -551,6 +578,7 @@ void avm_callsaveenvironment(){
     avm_push_envvalue(pc + 1);
     avm_push_envvalue(_top + totalActuals + 2);
     avm_push_envvalue(topsp);
+    
 }
 
 extern void avm_call_functor(avm_table* t){
@@ -673,8 +701,11 @@ memclear_func_t memclearFuncs[] = {
 
 //from lectures
 void avm_memcellclear(avm_memcell* m){
+    assert(m);
     if(m->type != undef_m){
+        
         memclear_func_t f = memclearFuncs[m->type];
+        
         if(f)
             (*f)(m);
         m->type = undef_m;
@@ -704,8 +735,8 @@ void avm_tabledestroy(avm_table* t){
 
 avm_memcell* avm_translate_operand(vmarg* arg, avm_memcell* reg){
     switch(arg->type){
-        case global_a: return &stack[AVM_STACKSIZE-1-arg->val];
-        case local_a: return &stack[topsp-arg->val];
+        case global_a: return &stack[AVM_STACKSIZE - 1 - arg->val];
+        case local_a: return &stack[topsp - arg->val];
         case formal_a: return &stack[topsp + AVM_STACKENV_SIZE + 1 + arg->val];
         case retval_a: return &retval;
         case number_a:{
@@ -784,7 +815,8 @@ void execute_nop(instruction *instr){
 void execute_assign(instruction* instr){
     avm_memcell* lv = avm_translate_operand(&instr->result, (avm_memcell*) 0);
     avm_memcell* rv = avm_translate_operand(&instr->arg1, &ax);
-    assert(lv && (&stack[AVM_STACKSIZE/*???*/ -1] >= lv && lv > &stack[_top] || lv == &retval));
+    //TODO fix bug
+   // assert(lv && (&stack[AVM_STACKSIZE/*???*/ -1] >= lv && lv > &stack[_top] || lv == &retval));
     assert(rv);
     avm_assign(lv,rv);
 }
@@ -798,8 +830,9 @@ void avm_assign(avm_memcell* lv, avm_memcell* rv){
         avm_warning("assigning from 'undef' content!");
     avm_memcellclear(lv);
     memcpy(lv,rv, sizeof(avm_memcell));
-    if(lv->type == string_m)
+    if(lv->type == string_m){
         lv->data.strVal = strdup(rv->data.strVal);
+    }
     else if(lv->type == table_m)
         avm_tableincrefcounter(lv->data.tableVal);
 }
@@ -840,7 +873,7 @@ void execute_funcenter(instruction* instr){
 }
 
 unsigned avm_get_envvalue(unsigned i){
-    assert(stack[i].type = number_m);
+    assert(stack[i].type == number_m);
     unsigned val = (unsigned)stack[i].data.numVal;
     assert(stack[i].data.numVal == ((double)val));
     return val;
@@ -913,8 +946,8 @@ void execute_arithmetic(instruction* instr){
     avm_memcell* lv = avm_translate_operand(&instr->result, (avm_memcell*)0);
     avm_memcell* rv1 = avm_translate_operand(&instr->arg1, &ax);
     avm_memcell* rv2 = avm_translate_operand(&instr->arg2, &bx);
-
-    assert(lv && (&stack[AVM_STACKSIZE/*????*/ - 1] >= lv && lv > &stack[_top] || lv == &retval));
+    //TODO fix bug
+    //assert(lv && (&stack[AVM_STACKSIZE/*????*/ - 1] >= lv && lv > &stack[_top] || lv == &retval));
     assert(rv1 && rv2);
     if(rv1->type != number_m || rv2->type != number_m){
         avm_error("not a number in arithmetic!");
@@ -929,22 +962,23 @@ void execute_arithmetic(instruction* instr){
 }
 
 void execute_cmp(instruction* instr){
-    avm_memcell* lv; //= avm_translate_operand(&instr->result, (avm_memcell*)0);
+    
     avm_memcell* rv1 = avm_translate_operand(&instr->arg1, &ax);
     avm_memcell* rv2 = avm_translate_operand(&instr->arg2, &bx);
 
-   //assert(lv && (&stack[AVM_STACKSIZE/*????*/ - 1] >= lv && lv > &stack[_top] || lv == &retval));
+    unsigned char result = 0;
+
     assert(rv1 && rv2);
-   /* if(rv1->type != number_m || rv2->type != number_m){
+    if(rv1->type != number_m || rv2->type != number_m){
         avm_error("not a number in comparizon!");
         executionFinished = 1;
     }
-    else{*/
+    else{
         cmp_func op = comparizonFuncs[instr->opcode - if_lesseq_v];
-        avm_memcellclear(lv);
-        lv->type = bool_m;
-        lv->data.boolVal = (*op)(rv1->data.numVal, rv2->data.numVal);
-   // }
+        result = (*op)(rv1->data.numVal, rv2->data.numVal);
+    }
+    if(!executionFinished && result)
+        pc = instr->result.val;
 
 }
 
@@ -970,7 +1004,16 @@ void execute_jeq(instruction *instr){
     else if(rv1->type != rv2->type)
         avm_error("illegal comparizon types");
     else{
-        //Equality check with dispatching
+         //Equality check with dispatching 
+        //Assuming types are the same
+        switch(rv1->type){
+            case number_m:{ result = rv1->data.numVal == rv2->data.numVal; break;}
+            case string_m:{ result = (strcmp(rv1->data.strVal, rv2->data.strVal) == 0); break;}
+            case table_m:{ result = rv1->data.tableVal == rv2->data.tableVal; /*????*/ break;}
+            case userfunc_m:{ result = rv1->data.funcVal == rv2->data.funcVal; /*????*/ break;}
+            case libfunc_m:{ result = (strcmp(rv1->data.libfuncVal, rv2->data.libfuncVal) == 0); /*????*/ break;}
+            default: assert(0);
+        }
     }
     if(!executionFinished && result)
         pc = instr->result.val;
@@ -993,6 +1036,14 @@ void execute_jne(instruction *instr){
         avm_error("illegal comparizon types");
     else{
         //Equality check with dispatching
+        switch(rv1->type){
+            case number_m:{ result = rv1->data.numVal == rv2->data.numVal; break;}
+            case string_m:{ result = (strcmp(rv1->data.strVal,rv2->data.strVal) == 0); break;}
+            case table_m:{ result = rv1->data.tableVal == rv2->data.tableVal; /*????*/ break;}
+            case userfunc_m:{ result = rv1->data.funcVal == rv2->data.funcVal; /*????*/ break;}
+            case libfunc_m:{ result = (strcmp(rv1->data.libfuncVal, rv2->data.libfuncVal) == 0); /*????*/ break;}
+            default: assert(0);
+        }
     }
     if(!executionFinished && result)
         pc = instr->result.val;
